@@ -11,7 +11,64 @@ Set in a futuristic underwater cyberpunk research facility during a catastrophic
 - Vite
 
 ## Folder Structure
-The structure is set up for Phase 1 development, including scenes, entities, systems, map logic, and UI.
+
+```text
+src/
+├── main.ts
+├── config/
+│   └── GameConfig.ts
+│
+├── scenes/
+│   ├── BootScene.ts
+│   ├── PreloadScene.ts
+│   ├── MainMenuScene.ts
+│   ├── GameScene.ts
+│   └── GameOverScene.ts
+│
+├── entities/
+│   ├── Player.ts
+│   └── Octopus.ts
+│
+├── systems/
+│   ├── InteractionSystem.ts
+│   ├── DoorSystem.ts
+│   ├── HackingSystem.ts
+│   ├── ThreatSystem.ts
+│   ├── NoiseSystem.ts
+│   └── GameState.ts
+│
+├── map/
+│   ├── FacilityMap.ts
+│   ├── Room.ts
+│   └── MapData.ts
+│
+├── ui/
+│   ├── HUD.ts
+│   ├── InteractionPrompt.ts
+│   ├── ThreatIndicator.ts
+│   └── CyberdeckUI.ts
+│
+├── data/
+│   ├── rooms.ts
+│   ├── items.ts
+│   └── objectives.ts
+│
+├── utils/
+│   ├── Constants.ts
+│   └── Helpers.ts
+│
+└── styles/
+    └── main.css
+
+public/
+├── assets/
+│   ├── sprites/
+│   ├── environment/
+│   ├── ui/
+│   ├── audio/
+│   └── maps/
+└── fonts/
+```
 
 ## Getting Started
 (Note: Only skeletal structure is currently provided, not a runnable game yet)
