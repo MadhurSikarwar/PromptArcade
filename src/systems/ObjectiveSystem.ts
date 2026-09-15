@@ -431,11 +431,17 @@ export class ObjectiveSystem {
         this.d.lighting.permanentBlackout = true;
         this.d.doors.getDoor('door-final-airlock')?.open();
         s.setObjective(OBJECTIVES.escape);
-        const spawn = W({ x: 11, y: 42 });
-        this.d.threat.spawn(spawn.x, spawn.y, { hunt: true, final: true });
         audio.play('impact');
-        audio.play('roar');
         scene.cameras.main.shake(500, 0.008);
+        // A beat of warning before it actually appears — control just returned to the player,
+        // spawning it hunting at full speed in the same instant was an unavoidable ambush.
+        s.notify('NETWORK OVERRIDE — SOMETHING IS COMING', 'a3');
+        scene.time.delayedCall(2200, () => {
+          const spawn = W({ x: 4, y: 39 });
+          this.d.threat.spawn(spawn.x, spawn.y, { hunt: true, final: true });
+          audio.play('roar');
+          s.notify('A-3 IS HERE — RUN FOR THE AIRLOCK!', 'danger');
+        });
       },
     });
   }
