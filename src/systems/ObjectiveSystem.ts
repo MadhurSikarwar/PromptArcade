@@ -5,7 +5,7 @@ import { LOGS, TANKS } from '../data/researchLogs';
 import type { Player } from '../entities/Player';
 import { WorldInteractable, type MarkerKind } from '../entities/WorldInteractable';
 import type { FacilityMap } from '../map/FacilityMap';
-import { ANCHORS, EMP_STATIONS, VENTS } from '../map/MapData';
+import { ANCHORS, EMP_STATIONS, FOOD_SPOTS, VENTS } from '../map/MapData';
 import { COLORS, TEXTURES, TILE_SIZE } from '../utils/Constants';
 import type { AdaptiveAISystem } from './AdaptiveAISystem';
 import { audio } from './AudioManager';
@@ -336,6 +336,18 @@ export class ObjectiveSystem {
         item.setDone(true);
       }, () => !used);
     }
+
+    FOOD_SPOTS.forEach((spot, i) => {
+      const id = `food-${i}`;
+      const item = this.add(id, spot, 'food', COLORS.green, () => 'TAKE RATION PACK  (+10% HEALTH)', () => {
+        const amount = Math.round(s.player.maxHealth * 0.1);
+        s.heal(amount);
+        audio.play('pickup');
+        s.notify(`RATION PACK — +${amount} HEALTH`, 'success');
+        this.d.interaction.unregister(id);
+        item.remove();
+      }, () => s.player.health < s.player.maxHealth);
+    });
   }
 
   private tankTease(anchor: { x: number; y: number }): void {

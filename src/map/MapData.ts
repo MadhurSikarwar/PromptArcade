@@ -176,7 +176,7 @@ export const DOORS: readonly DoorLayout[] = [
   { id: 'door-medbay', label: 'MEDBAY', tileX: 24, tileY: 15, span: 2, orientation: 'horizontal', initial: 'CLOSED', accent: 0x22e0d0 },
   { id: 'door-security-west', label: 'SECURITY', tileX: 42, tileY: 11, span: 3, orientation: 'vertical', initial: 'LOCKED', requires: { keycard: 'security' }, accent: COLORS.red },
   { id: 'door-security-south', label: 'SECURITY', tileX: 47, tileY: 15, span: 3, orientation: 'horizontal', initial: 'LOCKED', requires: { keycard: 'security' }, accent: COLORS.red },
-  { id: 'door-maintenance', label: 'MAINTENANCE', tileX: 47, tileY: 36, span: 3, orientation: 'horizontal', initial: 'LOCKED', requires: { flag: 'securityOnline', flagReason: 'SECURITY LOCKOUT — OVERRIDE AT SECURITY TERMINAL' }, accent: COLORS.yellow },
+  { id: 'door-maintenance', label: 'MAINTENANCE', tileX: 47, tileY: 36, span: 3, orientation: 'horizontal', initial: 'CLOSED', accent: COLORS.yellow },
   { id: 'door-power', label: 'POWER CORE', tileX: 33, tileY: 34, span: 3, orientation: 'horizontal', initial: 'LOCKED', requires: { flag: 'powerRouted', flagReason: 'NO POWER ROUTED — USE MAINTENANCE BREAKERS' }, accent: 0xff2a5a },
   { id: 'door-power-east', label: 'POWER CORE', tileX: 38, tileY: 41, span: 3, orientation: 'vertical', initial: 'LOCKED', requires: { flag: 'powerRouted', flagReason: 'NO POWER ROUTED — USE MAINTENANCE BREAKERS' }, accent: 0xff2a5a },
   { id: 'door-service-east', label: 'SERVICE CORRIDOR', tileX: 60, tileY: 39, span: 3, orientation: 'vertical', initial: 'DISABLED', requires: { power: true }, accent: COLORS.yellow },
@@ -230,6 +230,19 @@ export const EMP_STATIONS: readonly { id: string; x: number; y: number }[] = [
   { id: 'emp-storage', x: 39, y: 24 },
   { id: 'emp-observation', x: 90, y: 38 },
   { id: 'emp-upper', x: 4, y: 42 },
+];
+
+/** Ration packs scattered through every zone — a walkable-floor spot clear of props in each room. */
+export const FOOD_SPOTS: readonly { x: number; y: number }[] = [
+  { x: 24, y: 20 }, // crew quarters
+  { x: 40, y: 17 }, // storage
+  { x: 44, y: 29 }, // central hub
+  { x: 44, y: 13 }, // security
+  { x: 68, y: 13 }, // server room
+  { x: 63, y: 24 }, // research lab
+  { x: 84, y: 30 }, // experiment wing
+  { x: 88, y: 10 }, // aquarium
+  { x: 8, y: 42 }, // upper research
 ];
 
 /** Story / puzzle anchor tiles used by the progression script. */

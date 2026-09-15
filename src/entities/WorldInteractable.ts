@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { DEPTH, INTERACTION_RADIUS, TEXTURES } from '../utils/Constants';
 import type { Interactable, PromptTone } from './Interactable';
 
-export type MarkerKind = 'terminal' | 'pickup' | 'switch' | 'vent' | 'tank' | 'emp' | 'console' | 'keycard';
+export type MarkerKind = 'terminal' | 'pickup' | 'switch' | 'vent' | 'tank' | 'emp' | 'console' | 'keycard' | 'food';
 
 export interface WorldInteractableConfig {
   id: string;
@@ -41,11 +41,11 @@ export class WorldInteractable implements Interactable {
       .image(cfg.x, cfg.y, TEXTURES.glow)
       .setTint(cfg.color)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(cfg.kind === 'pickup' || cfg.kind === 'emp' || cfg.kind === 'keycard' ? 0.55 : 0.42)
+      .setScale(cfg.kind === 'pickup' || cfg.kind === 'emp' || cfg.kind === 'keycard' || cfg.kind === 'food' ? 0.55 : 0.42)
       .setAlpha(0.75)
       .setDepth(DEPTH.aboveDark);
     this.drawMarker();
-    if (cfg.kind === 'pickup' || cfg.kind === 'emp' || cfg.kind === 'keycard') {
+    if (cfg.kind === 'pickup' || cfg.kind === 'emp' || cfg.kind === 'keycard' || cfg.kind === 'food') {
       scene.tweens.add({ targets: this.glow, alpha: 0.35, scale: 0.4, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
   }
@@ -79,6 +79,12 @@ export class WorldInteractable implements Interactable {
         g.fillStyle(0x06090c, 1).fillRect(x - 11, y - 11, 22, 22);
         g.lineStyle(1, 0x5a6b78, 1).strokeRect(x - 11, y - 11, 22, 22);
         for (let i = -7; i <= 7; i += 4) g.lineStyle(2, 0x2a353e, 1).lineBetween(x - 9, y + i, x + 9, y + i);
+        break;
+      case 'food':
+        g.fillStyle(0x0d1a12, 1).fillRoundedRect(x - 8, y - 6, 16, 12, 2);
+        g.fillStyle(color, alpha).fillRect(x - 1.5, y - 4, 3, 8);
+        g.fillStyle(color, alpha).fillRect(x - 4, y - 1.5, 8, 3);
+        g.lineStyle(1, color, 0.8 * alpha).strokeRoundedRect(x - 8, y - 6, 16, 12, 2);
         break;
       case 'keycard':
         g.fillStyle(0x0d151c, 1).fillRoundedRect(x - 10, y - 7, 20, 14, 2);
