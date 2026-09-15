@@ -11,7 +11,10 @@ export type RoomId =
   | 'lab'
   | 'aquarium'
   | 'wing'
-  | 'observation';
+  | 'observation'
+  | 'upperlab'
+  | 'evac'
+  | 'finalairlock';
 
 export type ZoneId = 1 | 2 | 3 | 4;
 
@@ -35,7 +38,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
   medbay: { id: 'medbay', name: 'MEDBAY', zone: 1, accent: 0x22e0d0, purpose: 'First puzzle, first story log, power cell.' },
   crew: { id: 'crew', name: 'CREW QUARTERS', zone: 1, accent: 0x5fb3a8, purpose: 'Environmental storytelling.' },
   storage: { id: 'storage', name: 'STORAGE', zone: 1, accent: 0xe0a040, purpose: 'Supplies and alternate route.' },
-  security: { id: 'security', name: 'SECURITY', zone: 1, accent: 0xff3b4e, purpose: 'Camera control, door control, facility map.' },
+  security: { id: 'security', name: 'SECURITY', zone: 1, accent: 0xff3b4e, purpose: 'Camera control, door control.' },
   hub: { id: 'hub', name: 'CENTRAL HUB', zone: 2, accent: 0x3d8bff, purpose: 'Navigation and progression hub.' },
   power: { id: 'power', name: 'POWER CORE', zone: 2, accent: 0xff2a5a, purpose: 'Major facility power restoration.' },
   maintenance: { id: 'maintenance', name: 'MAINTENANCE', zone: 2, accent: 0xffb020, purpose: 'Power routing and electrical hazards.' },
@@ -43,5 +46,8 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
   lab: { id: 'lab', name: 'RESEARCH LAB', zone: 3, accent: 0x20e8a0, purpose: 'Project NEON story.' },
   aquarium: { id: 'aquarium', name: 'AQUARIUM', zone: 3, accent: 0x1f7bff, purpose: 'Specimen tanks and mystery.' },
   wing: { id: 'wing', name: 'EXPERIMENT WING', zone: 3, accent: 0xd94dff, purpose: 'Upper Facility Access Key.' },
-  observation: { id: 'observation', name: 'OBSERVATION DECK', zone: 3, accent: 0x4fd8ff, purpose: 'Ocean view and route to the east wing.' },
+  observation: { id: 'observation', name: 'OBSERVATION DECK', zone: 3, accent: 0x4fd8ff, purpose: 'Flooded deck, ocean view.' },
+  upperlab: { id: 'upperlab', name: 'UPPER RESEARCH', zone: 4, accent: 0xb45cff, purpose: 'Executive laboratories.' },
+  evac: { id: 'evac', name: 'EVACUATION CONTROL', zone: 4, accent: 0xff3b4e, purpose: 'Final control and final chase.' },
+  finalairlock: { id: 'finalairlock', name: 'FINAL AIRLOCK', zone: 4, accent: 0x19e6ff, purpose: 'Escape.' },
 };

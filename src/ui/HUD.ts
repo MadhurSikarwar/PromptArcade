@@ -1,10 +1,10 @@
 import type Phaser from 'phaser';
-import { alertLabel, KEYCARD_LEVELS, type GameState, type KeycardLevel } from '../systems/GameState';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../utils/Constants';
+import { alertLabel, KEYCARD_COLORS, KEYCARD_LEVELS, type GameState, type KeycardLevel } from '../systems/GameState';
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, MAX_EMP_CHARGES } from '../utils/Constants';
 import { toHex } from '../utils/Helpers';
 import { drawPanel, drawSegmentBar, uiText } from './UIKit';
 
-const KEYCARD_COLORS: Record<KeycardLevel, number> = { 1: COLORS.blue, 2: COLORS.purple, 3: COLORS.red };
+const KEYCARD_ABBR: Record<KeycardLevel, string> = { security: 'SEC', research: 'RES', experiment: 'EXP', upper: 'UPR' };
 const LABEL_COLOR = '#6f97a8';
 const MARGIN = 20;
 
@@ -25,10 +25,12 @@ export class HUD {
   private readonly alertValue: Phaser.GameObjects.Text;
   private readonly keycardTexts: Record<KeycardLevel, Phaser.GameObjects.Text>;
   private readonly empValue: Phaser.GameObjects.Text;
+  private readonly empStatus: Phaser.GameObjects.Text;
 
   private readonly vitals = { x: MARGIN, y: GAME_HEIGHT - MARGIN - 92, w: 290, h: 92 };
-  private readonly facility = { x: GAME_WIDTH - MARGIN - 300, y: MARGIN, w: 300, h: 80 };
-  private readonly inventory = { x: GAME_WIDTH - MARGIN - 236, y: GAME_HEIGHT - MARGIN - 92, w: 236, h: 92 };
+  private readonly facility = { x: GAME_WIDTH - MARGIN - 300, y: MARGIN, w: 300, h: 104 };
+  private readonly inventory = { x: GAME_WIDTH - MARGIN - 300, y: GAME_HEIGHT - MARGIN - 92, w: 300, h: 92 };
+  private readonly floodValue: Phaser.GameObjects.Text;
 
   constructor(
     scene: Phaser.Scene,
@@ -51,17 +53,21 @@ export class HUD {
 
     uiText(scene, f.x + 14, f.y + 10, 'FACILITY POWER', 11, LABEL_COLOR);
     uiText(scene, f.x + 14, f.y + 44, 'FACILITY ALERT', 11, LABEL_COLOR);
+    uiText(scene, f.x + 14, f.y + 78, 'FLOOD TIMER', 11, LABEL_COLOR);
     this.powerValue = uiText(scene, f.x + f.w - 14, f.y + 10, '', 11).setOrigin(1, 0);
     this.alertValue = uiText(scene, f.x + f.w - 14, f.y + 44, '', 11, '#39ff9c', true).setOrigin(1, 0);
+    this.floodValue = uiText(scene, f.x + f.w - 14, f.y + 78, '', 11, '#39ff9c', true).setOrigin(1, 0);
 
     uiText(scene, i.x + 14, i.y + 10, 'KEYCARDS', 11, LABEL_COLOR);
-    uiText(scene, i.x + 14, i.y + 63, 'EMP CHARGES', 11, LABEL_COLOR);
+    uiText(scene, i.x + 14, i.y + 63, 'EMP', 11, LABEL_COLOR);
     this.keycardTexts = {
-      1: uiText(scene, 0, 0, '', 12, '#d8f8ff', true).setOrigin(0.5),
-      2: uiText(scene, 0, 0, '', 12, '#d8f8ff', true).setOrigin(0.5),
-      3: uiText(scene, 0, 0, '', 12, '#d8f8ff', true).setOrigin(0.5),
+      security: uiText(scene, 0, 0, '', 11, '#d8f8ff', true).setOrigin(0.5),
+      research: uiText(scene, 0, 0, '', 11, '#d8f8ff', true).setOrigin(0.5),
+      experiment: uiText(scene, 0, 0, '', 11, '#d8f8ff', true).setOrigin(0.5),
+      upper: uiText(scene, 0, 0, '', 11, '#d8f8ff', true).setOrigin(0.5),
     };
-    this.empValue = uiText(scene, i.x + i.w - 14, i.y + 63, '', 11).setOrigin(1, 0);
+    this.empValue = uiText(scene, i.x + 96, i.y + 63, '', 11).setOrigin(0, 0.5);
+    this.empStatus = uiText(scene, i.x + i.w - 14, i.y + 63, '', 11, '#39ff9c', true).setOrigin(1, 0.5);
 
     this.meters = scene.add.graphics();
   }
@@ -94,32 +100,51 @@ export class HUD {
     this.alertValue.setText(`${alertLabel(fac.alert, fac.lockdown)}  ${fac.alert}%`);
     this.alertValue.setColor(toHex(aColor)).setAlpha(flashing ? 0.35 : 1);
 
+    if (s.flooding) {
+      const floodFlash = Math.floor(time / 400) % 2 === 0;
+      this.floodValue.setText('FLOODING').setColor('#19e6ff').setAlpha(floodFlash ? 1 : 0.4);
+    } else {
+      const remaining = Math.max(0, s.floodTriggerAt - time);
+      const mins = Math.floor(remaining / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+      const urgent = remaining < 30000;
+      this.floodValue.setText(`${mins}:${secs.toString().padStart(2, '0')}`);
+      this.floodValue.setColor(urgent ? '#ff3b4e' : '#39ff9c').setAlpha(urgent && Math.floor(time / 300) % 2 === 0 ? 0.4 : 1);
+    }
+
     const inv = this.inventory;
     KEYCARD_LEVELS.forEach((level, index) => {
       const owned = s.hasKeycard(level);
       const color = KEYCARD_COLORS[level];
-      const cx = inv.x + 14 + index * 70;
+      const cx = inv.x + 14 + index * 68;
       const cy = inv.y + 30;
       if (owned) {
         g.fillStyle(color, 0.9);
-        g.fillRect(cx, cy, 62, 22);
+        g.fillRect(cx, cy, 60, 22);
       } else {
         g.fillStyle(0x0b141b, 0.9);
-        g.fillRect(cx, cy, 62, 22);
+        g.fillRect(cx, cy, 60, 22);
       }
       g.lineStyle(1, color, owned ? 1 : 0.45);
-      g.strokeRect(cx + 0.5, cy + 0.5, 61, 21);
+      g.strokeRect(cx + 0.5, cy + 0.5, 59, 21);
       const label = this.keycardTexts[level];
-      label.setPosition(cx + 31, cy + 11);
-      label.setText(`L${level} ${owned ? '✓' : '—'}`);
+      label.setPosition(cx + 30, cy + 11);
+      label.setText(`${KEYCARD_ABBR[level]} ${owned ? '✓' : '—'}`);
       label.setColor(owned ? '#020609' : toHex(color));
     });
 
-    for (let n = 0; n < 3; n++) {
+    for (let n = 0; n < MAX_EMP_CHARGES; n++) {
       const has = n < s.inventory.empCharges;
       g.fillStyle(has ? COLORS.cyan : 0x1a2630, has ? 0.95 : 0.8);
-      g.fillRect(inv.x + 110 + n * 16, inv.y + 65, 11, 11);
+      g.fillRect(inv.x + 42 + n * 16, inv.y + 58, 11, 11);
     }
-    this.empValue.setText(`${s.inventory.empCharges}`);
+    this.empValue.setText(`${s.inventory.empCharges}/${MAX_EMP_CHARGES}`);
+
+    const cooldownLeft = s.empReadyAt - time;
+    if (cooldownLeft > 0) {
+      this.empStatus.setText(`${Math.ceil(cooldownLeft / 1000)}s`).setColor('#ffc23a');
+    } else {
+      this.empStatus.setText('READY').setColor('#39ff9c');
+    }
   }
 }

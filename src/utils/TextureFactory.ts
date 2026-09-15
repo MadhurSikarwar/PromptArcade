@@ -56,6 +56,33 @@ export function generateTextures(scene: Phaser.Scene): void {
 
   // Invisible tileset backing the collision tilemap (5 tile types).
   paint(scene, TEXTURES.collisionTiles, TILE_SIZE * 5, TILE_SIZE, () => undefined);
+
+  paint(scene, TEXTURES.octopus, 128, 128, (ctx, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, w / 2);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.55, 'rgba(210,210,210,0.85)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, w * 0.42, h * 0.34, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Flashlight cone: pointed at +X, mid-height, faded outward. Stamped with originX 0, originY 0.5.
+  paint(scene, TEXTURES.cone, 256, 128, (ctx, w, h) => {
+    const g = ctx.createRadialGradient(0, h / 2, 0, 0, h / 2, w);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2 - w * 0.5);
+    ctx.lineTo(w, h / 2 + w * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  });
 }
 
 function drawDiver(ctx: CanvasRenderingContext2D): void {

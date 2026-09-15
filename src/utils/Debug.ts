@@ -8,6 +8,10 @@ const ALERT_STEPS = [0, 30, 55, 80, 100];
 
 export interface DebugHooks {
   setWorldDebug(enabled: boolean): void;
+  restorePower(): void;
+  spawnOctopus(): void;
+  stunOctopus(): void;
+  triggerFinalChase(): void;
 }
 
 /**
@@ -36,25 +40,34 @@ export class DebugController {
       },
       false,
     );
-    bind('F2', () => state.giveKeycard(1));
+    bind('F2', () => state.giveKeycard('security'));
     bind('F3', () => KEYCARD_LEVELS.forEach((level) => state.giveKeycard(level)));
     bind('F4', () => {
-      state.setPower(100);
-      state.notify('DEBUG: POWER 100% (STATE ONLY — POWER SYSTEM IS PHASE 2)', 'debug');
+      hooks.restorePower();
+      state.notify('DEBUG: FACILITY POWER RESTORED', 'debug');
     });
     bind('F5', () => {
       const next = ALERT_STEPS.find((step) => step > state.facility.alert) ?? 0;
       state.setAlert(next);
       state.notify(`DEBUG: ALERT SET TO ${next}%`, 'debug');
     });
-    bind('F6', () => state.notify('DEBUG: A-3 NOT IMPLEMENTED YET (PHASE 3)', 'debug'));
-    bind('F7', () => state.notify('DEBUG: A-3 NOT IMPLEMENTED YET (PHASE 3)', 'debug'));
+    bind('F6', () => {
+      hooks.spawnOctopus();
+      state.notify('DEBUG: A-3 SPAWNED', 'debug');
+    });
+    bind('F7', () => {
+      hooks.stunOctopus();
+      state.notify('DEBUG: A-3 STUNNED', 'debug');
+    });
     bind('F8', () => {
       state.setLockdown(!state.facility.lockdown);
       if (state.facility.lockdown) state.setAlert(100);
       state.notify(`DEBUG: LOCKDOWN ${state.facility.lockdown ? 'ON' : 'OFF'} (STATE ONLY)`, 'debug');
     });
-    bind('F9', () => state.notify('DEBUG: FINAL CHASE NOT IMPLEMENTED YET (PHASE 8)', 'debug'));
+    bind('F9', () => {
+      hooks.triggerFinalChase();
+      state.notify('DEBUG: FINAL CHASE TRIGGERED', 'debug');
+    });
   }
 }
 

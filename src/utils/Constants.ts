@@ -11,14 +11,18 @@ export const SCENES = {
   boot: 'BootScene',
   preload: 'PreloadScene',
   menu: 'MainMenuScene',
+  opening: 'OpeningScene',
   game: 'GameScene',
   ui: 'UIScene',
   gameOver: 'GameOverScene',
+  ending: 'EndingScene',
 } as const;
 
 export const TEXTURES = {
   player: 'tex-player',
+  octopus: 'tex-octopus',
   glow: 'tex-glow',
+  cone: 'tex-cone',
   dot: 'tex-dot',
   vignette: 'tex-vignette',
   scanlines: 'tex-scanlines',
@@ -43,9 +47,14 @@ export const COLORS = {
 
 export const DEPTH = {
   floor: 0,
+  hazards: 5,
   doors: 10,
+  pickups: 12,
   player: 20,
-  fx: 30,
+  octopus: 25,
+  darkness: 50,
+  aboveDark: 60,
+  fx: 70,
   prompt: 100,
 } as const;
 
@@ -68,4 +77,14 @@ export const PLAYER_TUNING = {
 export const INTERACTION_RADIUS = 58;
 
 export const START_EMP_CHARGES = 2;
+export const MAX_EMP_CHARGES = 3;
 export const START_POWER = 18;
+export const EMP_COOLDOWN_MS = 15000;
+export const EMP_STUN_RADIUS = 260;
+export const OCTOPUS_ATTACK_DAMAGE = 22;
+export const OCTOPUS_ATTACK_DAMAGE_FINAL = 28;
+
+export const FLOOD_TIMER_MS = 240000;
+export const FLOOD_RISE_MS = 90000;
+export const FLOOD_OXYGEN_DRAIN_PER_SEC = 3.2;
+export const RADAR_RANGE = 900;

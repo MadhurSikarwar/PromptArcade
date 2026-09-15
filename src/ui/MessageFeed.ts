@@ -10,6 +10,7 @@ const TONE_COLORS: Record<NotifyTone, number> = {
   warning: COLORS.yellow,
   danger: COLORS.red,
   debug: COLORS.magenta,
+  a3: COLORS.magenta,
 };
 
 const MAX_NOTIFICATIONS = 3;

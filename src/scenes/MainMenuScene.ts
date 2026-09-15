@@ -45,10 +45,29 @@ export class MainMenuScene extends Phaser.Scene {
 
     uiText(this, cx, GAME_HEIGHT * 0.38 + 80, '—  D E E P E R   T H A N   S A F E  —', 22, '#ff5fd8', true).setOrigin(0.5);
 
-    const prompt = uiText(this, cx, GAME_HEIGHT * 0.68, 'PRESS  ENTER  TO  DIVE', 20, '#e8f6ff', true).setOrigin(0.5);
+    uiText(this, cx, GAME_HEIGHT * 0.56, 'HOW TO PLAY', 13, '#ff2bd6', true).setOrigin(0.5);
+    uiText(
+      this,
+      cx,
+      GAME_HEIGHT * 0.56 + 22,
+      [
+        'Follow the top-center arrow and the mission checklist to your next goal.',
+        'Find keycards, restore power and hack terminals to unlock the facility.',
+        'A-3 hunts by sight and sound — watch the radar, run, hide in vents, or use [Q] EMP to stun it.',
+        'A 4-minute flood timer is ticking — the lower level will flood, so keep moving.',
+        'Reach the original side door once you have Upper Facility Access, and escape.',
+      ].join('\n'),
+      12,
+      '#9fc3d1',
+    )
+      .setOrigin(0.5, 0)
+      .setLineSpacing(6)
+      .setAlign('center');
+
+    const prompt = uiText(this, cx, GAME_HEIGHT * 0.79, 'PRESS  ENTER  TO  DIVE', 20, '#e8f6ff', true).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.25, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    uiText(this, cx, GAME_HEIGHT - 48, 'WASD  MOVE     SHIFT  SPRINT     E  INTERACT     ESC  PAUSE', 13, '#4f7688').setOrigin(0.5);
+    uiText(this, cx, GAME_HEIGHT - 48, 'WASD MOVE  ·  SHIFT SPRINT  ·  E INTERACT  ·  Q EMP  ·  TAB DECK  ·  H HELP  ·  ESC PAUSE', 12, '#4f7688').setOrigin(0.5);
 
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.12);
     this.add.image(0, 0, TEXTURES.vignette).setOrigin(0);

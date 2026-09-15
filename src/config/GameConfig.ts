@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
+import { EndingScene } from '../scenes/EndingScene';
 import { GameOverScene } from '../scenes/GameOverScene';
 import { GameScene } from '../scenes/GameScene';
 import { MainMenuScene } from '../scenes/MainMenuScene';
@@ -27,6 +28,6 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
         debug: false,
       },
     },
-    scene: [BootScene, PreloadScene, MainMenuScene, GameScene, UIScene, GameOverScene],
+    scene: [BootScene, PreloadScene, MainMenuScene, GameScene, UIScene, GameOverScene, EndingScene],
   };
 }
