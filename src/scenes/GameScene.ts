@@ -213,12 +213,15 @@ export class GameScene extends Phaser.Scene {
     this.doors.update(now);
     this.lighting.update(now, this.player.x, this.player.y, this.player.sprite.rotation);
 
+    // While locked into a hacking minigame or cinematic (player is frozen and can't react), A-3 holds its position.
+    const threatPaused = this.state.modal === 'hack' || this.state.modal === 'cinematic';
+
     let seenByCamera = false;
     for (const cam of this.securityCameras) {
       const sees = cam.update(now, this.player.x, this.player.y, (a, b, c, d) => this.threat.los(a, b, c, d));
       if (sees) {
         seenByCamera = true;
-        this.threat.cameraSighting(this.player.x, this.player.y, now);
+        if (!threatPaused) this.threat.cameraSighting(this.player.x, this.player.y, now);
       }
     }
     this.state.facility.camerasActive = this.securityCameras.filter((c) => c.isActive(now)).length;
@@ -248,11 +251,11 @@ export class GameScene extends Phaser.Scene {
     const sprinting = this.state.player.movement === 'SPRINT';
     this.alert.update(dt, now, seenByCamera, sprinting);
     this.adaptive.update(dt, sprinting, this.lighting.isPlayerInDark(now));
-    this.threat.update(dt, now);
+    if (!threatPaused) this.threat.update(dt, now);
     this.objective.update(dt, now);
 
     const octopus = this.threat.octopus;
-    if (octopus) {
+    if (octopus && !threatPaused) {
       const os = octopus.brain.state;
       if (os === 'HUNT' || os === 'ATTACK' || os === 'SEARCH' || os === 'INVESTIGATE' || os === 'FORCING') {
         const aggressive = os === 'HUNT' || os === 'ATTACK';

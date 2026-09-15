@@ -73,7 +73,7 @@ export class HackingUI {
     this.rounds = Phaser.Math.Clamp(difficulty, 1, 3);
     this.round = 0;
     this.trace = 0;
-    this.traceSpeed = 1 / (9.5 - difficulty * 1.2);
+    this.traceSpeed = 1 / (18 - difficulty * 1.5);
     this.title.setText(`CYBERDECK // BREACH: ${title}`);
     this.container.setVisible(true);
     audio.play('glitch', 0.6);
@@ -104,7 +104,7 @@ export class HackingUI {
       else this.newRound();
     } else {
       audio.play('denied');
-      this.trace += 0.22;
+      this.trace += 0.1;
       this.cellBoxes[index].setFillStyle(0xff3b4e, 0.5);
       this.scene.time.delayedCall(140, () => this.cellBoxes[index].setFillStyle(0x12051a, 1));
     }
@@ -121,7 +121,7 @@ export class HackingUI {
     if (!this.isOpen) return;
     this.trace += this.traceSpeed * dt;
     this.shuffleTimer += dt;
-    if (this.shuffleTimer > 1.6) {
+    if (this.shuffleTimer > 2.6) {
       this.shuffleTimer = 0;
       Phaser.Utils.Array.Shuffle(this.values);
       this.renderCells();
