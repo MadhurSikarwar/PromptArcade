@@ -225,10 +225,9 @@ export class ObjectiveSystem {
         if (!ok) return;
         s.setFlag('serverData');
         this.items.get('server-terminal')?.setDone(true);
-        s.completeObjective('m4-data');
         s.log(LOGS.server.title, [...LOGS.server.lines], COLORS.cyan);
         scene.time.delayedCall(4000, () => {
-          this.spawnKeycard('research', { x: ANCHORS.serverTerminal.x + 1, y: ANCHORS.serverTerminal.y + 1 }, 'RESEARCH KEYCARD ACQUIRED');
+          this.spawnKeycard('research', { x: ANCHORS.serverTerminal.x + 1, y: ANCHORS.serverTerminal.y + 1 }, 'RESEARCH KEYCARD ACQUIRED', () => s.completeObjective('m4-data'));
           s.setObjective(OBJECTIVES.lab);
           s.say('DIVER', 'A-3... That thing IS the project.');
         });

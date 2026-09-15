@@ -4,7 +4,7 @@ import { ElectricHazard, FloodZone } from '../entities/Hazard';
 import { Player } from '../entities/Player';
 import { SecurityCamera } from '../entities/SecurityCamera';
 import { FacilityMap, TILE } from '../map/FacilityMap';
-import { CAMERAS, DOORS, FLOODS, HAZARDS, PLAYER_SPAWN_TILE } from '../map/MapData';
+import { ANCHORS, CAMERAS, DOORS, FLOODS, HAZARDS, PLAYER_SPAWN_TILE } from '../map/MapData';
 import { AdaptiveAISystem } from '../systems/AdaptiveAISystem';
 import { AlertSystem } from '../systems/AlertSystem';
 import { audio } from '../systems/AudioManager';
@@ -180,6 +180,8 @@ export class GameScene extends Phaser.Scene {
     if (freshRun) {
       this.state.setObjective('FIND A WAY OUT.');
       this.state.floodTriggerAt = this.time.now + FLOOD_TIMER_MS;
+      const octoStart = this.map.tileCenter(ANCHORS.hubCenter.x, ANCHORS.hubCenter.y);
+      this.threat.spawn(octoStart.x, octoStart.y, { hunt: false });
       this.state.saveCheckpoint();
       this.time.delayedCall(1200, () => this.state.say('DIVER', 'That floor just gave out... Where am I?'));
       this.time.delayedCall(6000, () => {

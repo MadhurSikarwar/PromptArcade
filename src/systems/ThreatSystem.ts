@@ -135,6 +135,10 @@ export class ThreatSystem {
       audio.play('roar');
       this.state.notify('A-3 IS HUNTING YOU — RUN OR HIDE!', 'danger');
       this.scene.cameras.main.shake(260, 0.004);
+      if (!this.state.hasFlag('tutorialThreat')) {
+        this.state.setFlag('tutorialThreat');
+        this.state.notify('RUN! IT SAW YOU. USE [Q] EMP OR FIND A VENT.', 'warning');
+      }
     }
     if (next === 'ATTACK') {
       audio.play('roar', 0.85);
@@ -150,10 +154,6 @@ export class ThreatSystem {
       this.octopus = new Octopus(this.scene, this.buildWorld(), x, y);
       this.state.octopus.spawned = true;
       this.state.setFlag('a3Active');
-      if (!this.state.hasFlag('tutorialThreat')) {
-        this.state.setFlag('tutorialThreat');
-        this.state.notify('RUN! SOMETHING IS HUNTING YOU.', 'warning');
-      }
     } else {
       this.octopus.brain.teleport(x, y);
     }
@@ -194,7 +194,8 @@ export class ThreatSystem {
     brain.hearingMult = this.deps.adaptive.has('footsteps') ? 1.45 : 1;
     brain.forceDuration = this.deps.adaptive.has('doors') ? 0.6 : 1.5;
     brain.stunDuration = this.deps.adaptive.has('emp') ? 3200 : 5000;
-    brain.speedBonus = this.state.facility.alert >= 50 ? 14 : 0;
+    // Slow and manageable in Mission 1, ramping up as later missions raise the stakes.
+    brain.speedBonus = this.state.missionIndex * 9 - 18 + (this.state.facility.alert >= 50 ? 14 : 0);
 
     o.update(dt, now, p.x, p.y);
 
