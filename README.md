@@ -71,4 +71,23 @@ public/
 ```
 
 ## Getting Started
-(Note: Only skeletal structure is currently provided, not a runnable game yet)
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # strict type-check + production bundle in dist/
+```
+
+### Controls
+| Key | Action |
+| --- | --- |
+| WASD / Arrows | Move |
+| Shift | Sprint (uses stamina) |
+| E | Interact |
+| Esc | Pause (R restarts the run while paused) |
+
+### Debug (development only)
+F1 toggles debug mode (overlay + collision view). While it is on: F2 Level 1 card, F3 all cards, F4 power 100%, F5 step alert, F8 lockdown. F6/F7/F9 are reserved for A-3 and the final chase (later phases).
+
+## Build Status
+Phase 1 (Foundation) complete: scenes, player movement/sprint/stamina, tile collision, camera, 13-room facility map, doors + generic interaction framework, HUD, central GameState, debug mode. All art is procedural placeholder.
