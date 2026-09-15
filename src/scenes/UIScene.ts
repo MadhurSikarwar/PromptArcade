@@ -15,7 +15,7 @@ import { PauseMenu } from '../ui/PauseMenu';
 import { RadarUI } from '../ui/RadarUI';
 import { ThreatIndicator } from '../ui/ThreatIndicator';
 import { WalkthroughUI } from '../ui/WalkthroughUI';
-import { GAME_HEIGHT, GAME_WIDTH, SCENES, TEXTURES } from '../utils/Constants';
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, SCENES, TEXTURES } from '../utils/Constants';
 import { DebugOverlay } from '../utils/Debug';
 import { requireKeyboard } from '../utils/Helpers';
 
@@ -42,7 +42,11 @@ export class UIScene extends Phaser.Scene {
     const state = getGameState();
 
     this.add.image(0, 0, TEXTURES.vignette).setOrigin(0);
-    this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.05);
+    this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.08);
+
+    // Faint ambient scan beam — a persistent "under surveillance" cyberpunk texture.
+    const beam = this.add.rectangle(0, -4, GAME_WIDTH, 2, COLORS.cyan, 0.045).setOrigin(0, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
+    this.tweens.add({ targets: beam, y: GAME_HEIGHT, duration: 7000, repeat: -1, ease: 'Sine.easeInOut', yoyo: true });
 
     const objective = new ObjectiveUI(this, state);
     const mission = new MissionUI(this, state);
@@ -99,6 +103,7 @@ export class UIScene extends Phaser.Scene {
       if (this.pauseMenu.isOpen) this.restartRun();
     });
     keyboard.on('keydown-H', () => this.walkthrough.toggle());
+    keyboard.on('keydown-M', () => this.minimap.toggle());
   }
 
   override update(time: number, delta: number): void {

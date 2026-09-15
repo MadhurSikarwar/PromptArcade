@@ -23,6 +23,25 @@ export class MainMenuScene extends Phaser.Scene {
       .setScale(9, 4)
       .setBlendMode(Phaser.BlendModes.ADD);
 
+    // Perspective neon floor grid, fading toward a horizon — classic cyberpunk skyline vibe.
+    const horizon = GAME_HEIGHT * 0.62;
+    const grid = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    for (let i = -20; i <= 20; i++) {
+      const t = i / 20;
+      grid.lineStyle(1, COLORS.magenta, 0.16 * (1 - Math.abs(t) * 0.4));
+      grid.lineBetween(cx + t * 40, horizon, cx + t * GAME_WIDTH, GAME_HEIGHT);
+    }
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      const y = horizon + (GAME_HEIGHT - horizon) * t * t;
+      grid.lineStyle(1, COLORS.cyan, 0.14 * (1 - t * 0.5));
+      grid.lineBetween(0, y, GAME_WIDTH, y);
+    }
+
+    // Slow vertical scan beam sweeping the whole screen.
+    const beam = this.add.rectangle(0, -4, GAME_WIDTH, 3, COLORS.cyan, 0.16).setOrigin(0, 0).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: beam, y: GAME_HEIGHT, duration: 4200, repeat: -1, ease: 'Sine.easeInOut' });
+
     this.add.particles(0, 0, TEXTURES.dot, {
       x: { min: 0, max: GAME_WIDTH },
       y: GAME_HEIGHT + 10,
@@ -33,6 +52,18 @@ export class MainMenuScene extends Phaser.Scene {
       alpha: { start: 0.4, end: 0 },
       tint: COLORS.cyan,
       frequency: 140,
+      blendMode: Phaser.BlendModes.ADD,
+    });
+    this.add.particles(0, 0, TEXTURES.dot, {
+      x: { min: 0, max: GAME_WIDTH },
+      y: GAME_HEIGHT + 10,
+      lifespan: 7000,
+      speedY: { min: -55, max: -18 },
+      speedX: { min: -10, max: 10 },
+      scale: { min: 0.1, max: 0.4 },
+      alpha: { start: 0.28, end: 0 },
+      tint: COLORS.magenta,
+      frequency: 260,
       blendMode: Phaser.BlendModes.ADD,
     });
 
@@ -69,7 +100,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     uiText(this, cx, GAME_HEIGHT - 48, 'WASD MOVE  ·  SHIFT SPRINT  ·  E INTERACT  ·  Q EMP  ·  TAB DECK  ·  H HELP  ·  ESC PAUSE', 12, '#4f7688').setOrigin(0.5);
 
-    this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.12);
+    this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.18);
     this.add.image(0, 0, TEXTURES.vignette).setOrigin(0);
 
     // Occasional failing-neon flicker on the title.

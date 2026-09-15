@@ -194,8 +194,8 @@ export class ThreatSystem {
     brain.hearingMult = this.deps.adaptive.has('footsteps') ? 1.45 : 1;
     brain.forceDuration = this.deps.adaptive.has('doors') ? 0.6 : 1.5;
     brain.stunDuration = this.deps.adaptive.has('emp') ? 3200 : 5000;
-    // Slow and manageable in Mission 1, ramping up as later missions raise the stakes.
-    brain.speedBonus = this.state.missionIndex * 9 - 18 + (this.state.facility.alert >= 50 ? 14 : 0);
+    // Slow and manageable in Mission 1, ramping up as later missions (now 4 total) raise the stakes.
+    brain.speedBonus = this.state.missionIndex * 19 - 18 + (this.state.facility.alert >= 50 ? 14 : 0);
 
     o.update(dt, now, p.x, p.y);
 

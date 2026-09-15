@@ -340,25 +340,34 @@ export class GameState {
     this.events.emit('debug-toggled', { enabled });
   }
 
-  /** Marks a mission objective done. Auto-advances to the next mission once every objective in the current one is complete. */
+  /**
+   * Marks a mission objective done, wherever it lives — some objectives (e.g. a keycard that
+   * ejects during an earlier mission's terminal flow) get completed before their listed mission
+   * is even active. Looking it up by id across all missions (not just the current one) keeps
+   * that from being silently dropped and permanently blocking that mission's completion.
+   * Auto-advances through any missions that are now fully done, in order.
+   */
   completeObjective(id: string): void {
     if (this.completedObjectives.has(id)) return;
-    const mission = MISSIONS[this.missionIndex];
-    const objective = mission?.objectives.find((o) => o.id === id);
-    if (!objective) return;
+    const owningMission = MISSIONS.find((m) => m.objectives.some((o) => o.id === id));
+    const objective = owningMission?.objectives.find((o) => o.id === id);
+    if (!owningMission || !objective) return;
     this.completedObjectives.add(id);
     this.events.emit('objective-complete', { id, label: objective.label });
 
-    const done = mission.objectives.every((o) => this.completedObjectives.has(o.id));
-    if (!done) return;
-    this.notify(`MISSION COMPLETE — ${mission.title}`, 'success');
-    this.missionIndex++;
-    this.saveCheckpoint();
-    if (this.missionIndex >= MISSIONS.length) {
-      this.notify('DEMO COMPLETE', 'success');
-      return;
+    while (this.missionIndex < MISSIONS.length) {
+      const current = MISSIONS[this.missionIndex];
+      const done = current.objectives.every((o) => this.completedObjectives.has(o.id));
+      if (!done) return;
+      this.notify(`MISSION COMPLETE — ${current.title}`, 'success');
+      this.missionIndex++;
+      this.saveCheckpoint();
+      if (this.missionIndex >= MISSIONS.length) {
+        this.notify('DEMO COMPLETE', 'success');
+        return;
+      }
+      this.events.emit('mission-changed', { index: this.missionIndex });
     }
-    this.events.emit('mission-changed', { index: this.missionIndex });
   }
 
   saveCheckpoint(): void {

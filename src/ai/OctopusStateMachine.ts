@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { Door } from '../entities/Door';
 import { OCTOPUS_ATTACK_DAMAGE, OCTOPUS_ATTACK_DAMAGE_FINAL, TILE_SIZE } from '../utils/Constants';
+import { damp } from '../utils/Helpers';
 import type { Pathfinder, TilePoint } from './Pathfinder';
 
 export type OctoState = 'IDLE' | 'PATROL' | 'INVESTIGATE' | 'SEARCH' | 'HUNT' | 'ATTACK' | 'STUNNED' | 'RETURN' | 'FORCING' | 'GRAB';
@@ -53,6 +54,7 @@ export class OctopusBrain {
   private path: TilePoint[] = [];
   private pathIndex = 0;
   private repathAt = 0;
+  private currentSpeed = 0;
   private stateTime = 0;
   private loseTimer = 0;
   private stunUntil = 0;
@@ -335,7 +337,10 @@ export class OctopusBrain {
     const dx = goal.x - this.x;
     const dy = goal.y - this.y;
     const dist = Math.hypot(dx, dy);
-    const speed = (SPEED[this.state] + this.speedBonus) * (this.finalMode && this.state === 'HUNT' ? 1.24 : 1);
+    const targetSpeed = (SPEED[this.state] + this.speedBonus) * (this.finalMode && this.state === 'HUNT' ? 1.24 : 1);
+    // Ease toward the target speed instead of snapping — no jarring instant burst the moment it spots you.
+    this.currentSpeed = damp(this.currentSpeed, targetSpeed, 2, dt);
+    const speed = this.currentSpeed;
     const step = speed * dt;
     if (dist > 0.01) {
       const targetAngle = Math.atan2(dy, dx);
