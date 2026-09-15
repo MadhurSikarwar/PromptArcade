@@ -1,4 +1,4 @@
-# NEON DIVER
+# KRAKEN — Dead Signal
 
 A 2D top-down cyberpunk survival/exploration horror game.
 

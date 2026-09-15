@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ROOMS } from '../data/rooms';
 import { MAP_HEIGHT, MAP_WIDTH, ROOM_LAYOUTS } from '../map/MapData';
 import type { GameState } from '../systems/GameState';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TILE_SIZE } from '../utils/Constants';
@@ -51,6 +52,8 @@ export class MinimapUI {
     children.push(panel);
 
     const rooms = scene.add.graphics();
+    children.push(rooms);
+    const labels: Phaser.GameObjects.Text[] = [];
     for (const r of ROOM_LAYOUTS) {
       const rx = layout.x + 5 + r.rect.x * TILE_SIZE * layout.scale;
       const ry = layout.y + 5 + r.rect.y * TILE_SIZE * layout.scale;
@@ -61,9 +64,14 @@ export class MinimapUI {
       if (big) {
         rooms.lineStyle(1, COLORS.cyan, 0.2);
         rooms.strokeRect(rx, ry, rw, rh);
+        if (rw > 26 && rh > 16) {
+          const label = uiText(scene, rx + rw / 2, ry + rh / 2, ROOMS[r.id].name, 8, '#bfe6f2').setOrigin(0.5).setAlpha(0.85);
+          label.setWordWrapWidth(rw - 2, true);
+          labels.push(label);
+        }
       }
     }
-    children.push(rooms, dots);
+    children.push(...labels, dots);
 
     if (big) children.push(uiText(scene, layout.x + layout.w - 10, layout.y - 20, '[M] CLOSE MAP', 12, '#6f97a8').setOrigin(1, 0));
 

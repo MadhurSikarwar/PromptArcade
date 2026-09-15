@@ -1,11 +1,42 @@
 import Phaser from 'phaser';
 import { startNewRun } from '../systems/GameState';
-import { uiText } from '../ui/UIKit';
+import { drawPanel, uiText } from '../ui/UIKit';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, SCENES, TEXTURES } from '../utils/Constants';
 import { requireKeyboard } from '../utils/Helpers';
 
+const CONTROLS: [string, string][] = [
+  ['WASD', 'MOVE'],
+  ['SHIFT', 'SPRINT'],
+  ['E', 'INTERACT'],
+  ['Q', 'EMP BLAST'],
+  ['TAB', 'CYBERDECK'],
+  ['M', 'MAP'],
+  ['H', 'WALKTHROUGH'],
+  ['ESC', 'PAUSE'],
+];
+
+const BRIEFING = [
+  'Follow the top-center arrow and the mission checklist to your next goal.',
+  'Find keycards, restore power and hack terminals to unlock the facility.',
+  'The Kraken hunts by sight and sound — watch the radar, run, hide in vents, or use [Q] to EMP it.',
+  'A 4-minute flood timer is ticking. Once it hits zero, the lower level floods and oxygen starts draining.',
+  'Reach Upper Facility Access, return to the door you ignored at the start, and get out alive.',
+];
+
+/** A button is a hit-target rectangle + label the caller can style/animate directly. */
+interface Button {
+  box: Phaser.GameObjects.Rectangle;
+  label: Phaser.GameObjects.Text;
+}
+
 export class MainMenuScene extends Phaser.Scene {
   private starting = false;
+  private octoT = 0;
+  private octopusBody!: Phaser.GameObjects.Image;
+  private octopusGlow!: Phaser.GameObjects.Image;
+  private octopusGlowMagenta!: Phaser.GameObjects.Image;
+  private octopusTentacles!: Phaser.GameObjects.Graphics;
+  private octopusEyes: Phaser.GameObjects.Image[] = [];
 
   constructor() {
     super(SCENES.menu);
@@ -17,7 +48,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.void).setOrigin(0);
     this.add
-      .image(cx, GAME_HEIGHT * 0.42, TEXTURES.glow)
+      .image(cx, GAME_HEIGHT * 0.4, TEXTURES.glow)
       .setTint(COLORS.cyan)
       .setAlpha(0.14)
       .setScale(9, 4)
@@ -38,7 +69,6 @@ export class MainMenuScene extends Phaser.Scene {
       grid.lineBetween(0, y, GAME_WIDTH, y);
     }
 
-    // Slow vertical scan beam sweeping the whole screen.
     const beam = this.add.rectangle(0, -4, GAME_WIDTH, 3, COLORS.cyan, 0.16).setOrigin(0, 0).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({ targets: beam, y: GAME_HEIGHT, duration: 4200, repeat: -1, ease: 'Sine.easeInOut' });
 
@@ -67,41 +97,18 @@ export class MainMenuScene extends Phaser.Scene {
       blendMode: Phaser.BlendModes.ADD,
     });
 
-    const ghost = uiText(this, cx + 4, GAME_HEIGHT * 0.38 + 2, 'NEON DIVER', 104, '#ff2bd6', true)
+    this.octoT = 0;
+    this.buildBackgroundOctopus();
+
+    const ghost = uiText(this, cx + 4, GAME_HEIGHT * 0.34 + 2, 'KRAKEN', 108, '#ff2bd6', true)
       .setOrigin(0.5)
       .setAlpha(0.35)
       .setBlendMode(Phaser.BlendModes.ADD);
-    const title = uiText(this, cx, GAME_HEIGHT * 0.38, 'NEON DIVER', 104, '#19e6ff', true).setOrigin(0.5);
-    title.setShadow(0, 0, '#19e6ff', 24, false, true);
+    const title = uiText(this, cx, GAME_HEIGHT * 0.34, 'KRAKEN', 108, '#19e6ff', true).setOrigin(0.5);
+    title.setShadow(0, 0, '#19e6ff', 26, false, true);
 
-    uiText(this, cx, GAME_HEIGHT * 0.38 + 80, '—  D E E P E R   T H A N   S A F E  —', 22, '#ff5fd8', true).setOrigin(0.5);
-
-    uiText(this, cx, GAME_HEIGHT * 0.56, 'HOW TO PLAY', 13, '#ff2bd6', true).setOrigin(0.5);
-    uiText(
-      this,
-      cx,
-      GAME_HEIGHT * 0.56 + 22,
-      [
-        'Follow the top-center arrow and the mission checklist to your next goal.',
-        'Find keycards, restore power and hack terminals to unlock the facility.',
-        'A-3 hunts by sight and sound — watch the radar, run, hide in vents, or use [Q] EMP to stun it.',
-        'A 4-minute flood timer is ticking — the lower level will flood, so keep moving.',
-        'Reach the original side door once you have Upper Facility Access, and escape.',
-      ].join('\n'),
-      12,
-      '#9fc3d1',
-    )
-      .setOrigin(0.5, 0)
-      .setLineSpacing(6)
-      .setAlign('center');
-
-    const prompt = uiText(this, cx, GAME_HEIGHT * 0.79, 'PRESS  ENTER  TO  DIVE', 20, '#e8f6ff', true).setOrigin(0.5);
-    this.tweens.add({ targets: prompt, alpha: 0.25, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-
-    uiText(this, cx, GAME_HEIGHT - 48, 'WASD MOVE  ·  SHIFT SPRINT  ·  E INTERACT  ·  Q EMP  ·  TAB DECK  ·  H HELP  ·  ESC PAUSE', 12, '#4f7688').setOrigin(0.5);
-
-    this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.18);
-    this.add.image(0, 0, TEXTURES.vignette).setOrigin(0);
+    uiText(this, cx, GAME_HEIGHT * 0.34 + 80, '—  D E A D   S I G N A L  —', 22, '#ff5fd8', true).setOrigin(0.5);
+    uiText(this, cx, GAME_HEIGHT * 0.34 + 112, 'POSEIDON RESEARCH FACILITY // TRANSMISSION LOST', 11, '#4f7688', true).setOrigin(0.5);
 
     // Occasional failing-neon flicker on the title.
     this.time.addEvent({
@@ -113,11 +120,211 @@ export class MainMenuScene extends Phaser.Scene {
       },
     });
 
+    const diveBtn = this.makeButton(cx - 108, GAME_HEIGHT * 0.6, 196, 50, '▶  DIVE IN', COLORS.cyan, true, () => this.startGame());
+    this.makeButton(cx + 108, GAME_HEIGHT * 0.6, 196, 50, '☰  BRIEFING', COLORS.magenta, false, () => this.openBriefing());
+    this.pulseButton(diveBtn);
+
+    uiText(this, cx, GAME_HEIGHT * 0.6 + 46, 'PRESS  ENTER  TO  DIVE  ·  OR  CLICK  BRIEFING  FOR  CONTROLS', 11, '#4f7688').setOrigin(0.5);
+
+    this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.18);
+    this.add.image(0, 0, TEXTURES.vignette).setOrigin(0);
+
+    this.buildBriefingModal();
+
     const keyboard = requireKeyboard(this);
     keyboard.on('keydown-ENTER', () => this.startGame());
-    keyboard.on('keydown-SPACE', () => this.startGame());
-    this.input.on('pointerdown', () => this.startGame());
+    keyboard.on('keydown-ESC', () => this.closeBriefing());
     this.cameras.main.fadeIn(700, 0, 0, 0);
+  }
+
+  private makeButton(x: number, y: number, w: number, h: number, label: string, accent: number, primary: boolean, onClick: () => void): Button {
+    const box = this.add
+      .rectangle(x, y, w, h, accent, primary ? 0.16 : 0.08)
+      .setStrokeStyle(1.5, accent, primary ? 1 : 0.65)
+      .setInteractive({ useHandCursor: true });
+    const text = uiText(this, x, y, label, 15, primary ? '#eafcff' : '#ffd6f6', true).setOrigin(0.5);
+
+    box.on('pointerover', () => {
+      box.setFillStyle(accent, primary ? 0.32 : 0.18);
+      this.tweens.add({ targets: [box, text], scale: 1.04, duration: 120, ease: 'Cubic.easeOut' });
+    });
+    box.on('pointerout', () => {
+      box.setFillStyle(accent, primary ? 0.16 : 0.08);
+      this.tweens.add({ targets: [box, text], scale: 1, duration: 120, ease: 'Cubic.easeOut' });
+    });
+    box.on('pointerdown', () => {
+      this.tweens.add({ targets: [box, text], scale: 0.96, duration: 60, yoyo: true });
+      onClick();
+    });
+    return { box, label: text };
+  }
+
+  private pulseButton(btn: Button): void {
+    this.tweens.add({
+      targets: btn.box,
+      alpha: { from: 1, to: 0.7 },
+      duration: 1100,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  /** Same creature as in-game (body + 8-tentacle procedural render + glowing eyes) — bigger, longer-limbed, and lit up. */
+  private buildBackgroundOctopus(): void {
+    const start = -420;
+    const y0 = GAME_HEIGHT * 0.24;
+    this.octopusGlow = this.add.image(start, y0, TEXTURES.glow).setScale(2.6).setTint(COLORS.cyan).setAlpha(0.28).setBlendMode(Phaser.BlendModes.ADD);
+    this.octopusGlowMagenta = this.add.image(start, y0, TEXTURES.glow).setScale(1.7).setTint(COLORS.magenta).setAlpha(0.22).setBlendMode(Phaser.BlendModes.ADD);
+    this.octopusTentacles = this.add.graphics().setAlpha(0.95);
+    this.octopusBody = this.add.image(start, y0, TEXTURES.octopus).setScale(2.3).setAlpha(0.96);
+    this.octopusEyes = [0, 1].map(() => this.add.image(start, y0, TEXTURES.glow).setScale(0.34).setTint(COLORS.cyan).setAlpha(0.95).setBlendMode(Phaser.BlendModes.ADD));
+  }
+
+  override update(_time: number, delta: number): void {
+    if (!this.octopusBody) return;
+    const dt = Math.min(delta, 50) / 1000;
+    this.octoT += dt;
+
+    // Wandering path: two circular motions at unrelated periods layered together, so it loops
+    // top-to-bottom and right-to-left across the whole screen without ever exactly repeating.
+    const time = this.octoT;
+    const cx = GAME_WIDTH * 0.5;
+    const cy = GAME_HEIGHT * 0.42;
+    const w1 = (2 * Math.PI) / 41;
+    const w2 = (2 * Math.PI) / 33;
+    const w3 = (2 * Math.PI) / 19;
+    const w4 = (2 * Math.PI) / 26;
+    const ax1 = GAME_WIDTH * 0.44;
+    const ax2 = GAME_WIDTH * 0.14;
+    const ay1 = GAME_HEIGHT * 0.32;
+    const ay2 = GAME_HEIGHT * 0.12;
+
+    const xPos = cx + ax1 * Math.sin(time * w1) + ax2 * Math.sin(time * w3 + 1.3);
+    const yPos = cy + ay1 * Math.sin(time * w2 + 0.7) + ay2 * Math.sin(time * w4 + 2.1);
+    const vx = ax1 * w1 * Math.cos(time * w1) + ax2 * w3 * Math.cos(time * w3 + 1.3);
+    const vy = ay1 * w2 * Math.cos(time * w2 + 0.7) + ay2 * w4 * Math.cos(time * w4 + 2.1);
+
+    const x = xPos;
+    const y = yPos;
+    const facing = Math.atan2(vy, vx);
+    const pulse = 1 + Math.sin(this.octoT * 0.8) * 0.04;
+
+    this.octopusBody.setPosition(x, y).setRotation(facing).setScale(2.3 * pulse);
+    this.octopusGlow.setPosition(x, y).setAlpha(0.24 + Math.sin(this.octoT * 0.8) * 0.06);
+    this.octopusGlowMagenta.setPosition(x - 18, y + 10).setAlpha(0.18 + Math.sin(this.octoT * 0.8 + 1.4) * 0.06);
+
+    const g = this.octopusTentacles;
+    g.clear();
+    for (let i = 0; i < 8; i++) {
+      const spread = (i - 3.5) * 0.3;
+      let angle = facing + Math.PI + spread;
+      let px = x + Math.cos(angle) * 46;
+      let py = y + Math.sin(angle) * 46;
+      const segments = 13;
+      for (let s = 0; s < segments; s++) {
+        const wave = Math.sin(this.octoT * 1.5 + i * 1.3 + s * 0.5) * 0.32;
+        angle += wave * 0.35;
+        const segLength = 22;
+        const nx = px + Math.cos(angle) * segLength;
+        const ny = py + Math.sin(angle) * segLength;
+        const width = Math.max(2.5, 20 - s * 1.4);
+        g.lineStyle(width + 4, 0x020406, 0.85);
+        g.lineBetween(px, py, nx, ny);
+        g.lineStyle(width, s % 3 === 0 ? 0x1c2a33 : 0x121a21, 1);
+        g.lineBetween(px, py, nx, ny);
+        if (s % 3 === 1) {
+          g.fillStyle(COLORS.cyan, 0.75);
+          g.fillCircle(nx, ny, 2.6);
+        } else if (s % 4 === 3) {
+          g.fillStyle(COLORS.magenta, 0.6);
+          g.fillCircle(nx, ny, 2);
+        }
+        px = nx;
+        py = ny;
+      }
+      g.fillStyle(COLORS.cyan, 0.95);
+      g.fillCircle(px, py, 3.6);
+    }
+
+    this.octopusEyes.forEach((eye, i) => {
+      const a = facing + (i === 0 ? -0.45 : 0.45);
+      eye.setPosition(x + Math.cos(a) * 46, y + Math.sin(a) * 46);
+    });
+  }
+
+  private buildBriefingModal(): void {
+    const cx = GAME_WIDTH / 2;
+    const w = 620;
+    const h = 520;
+    const x = cx - w / 2;
+    const y = (GAME_HEIGHT - h) / 2;
+
+    // Interactive so it both blocks clicks to the menu buttons behind it and closes the modal when clicked.
+    const backdrop = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x010204, 0.82).setOrigin(0).setInteractive();
+    backdrop.on('pointerdown', () => this.closeBriefing());
+
+    const panel = this.add.graphics();
+    drawPanel(panel, x, y, w, h, COLORS.magenta);
+
+    // Sits on top of the backdrop over the panel's own footprint so clicks on the briefing
+    // content (not just its buttons) don't fall through to the backdrop and close the modal.
+    const panelShield = this.add.rectangle(x, y, w, h, 0x000000, 0).setOrigin(0).setInteractive();
+
+    const title = uiText(this, x + 26, y + 22, 'MISSION BRIEFING', 20, '#ff5fd8', true);
+    const sub = uiText(this, x + 26, y + 50, 'POSEIDON FACILITY // DIVE PROTOCOL', 10, '#8f5f8a', true);
+
+    const bodyText = BRIEFING.map((line) => `›  ${line}`).join('\n\n');
+    const body = uiText(this, x + 26, y + 86, bodyText, 13, '#c8dfe8').setLineSpacing(9).setWordWrapWidth(w - 52);
+
+    const controlsY = y + h - 118;
+    const controlsLabel = uiText(this, x + 26, controlsY, 'CONTROLS', 11, '#ff2bd6', true);
+    const controlEls: Phaser.GameObjects.Text[] = [controlsLabel];
+    CONTROLS.forEach(([key, action], i) => {
+      const col = i % 4;
+      const row = Math.floor(i / 4);
+      const kx = x + 26 + col * ((w - 52) / 4);
+      const ky = controlsY + 24 + row * 30;
+      const keyBg = this.add.rectangle(kx, ky, 46, 20, COLORS.cyan, 0.12).setStrokeStyle(1, COLORS.cyan, 0.6).setOrigin(0, 0.5);
+      const keyText = uiText(this, kx + 23, ky, key, 10, '#9fdcff', true).setOrigin(0.5);
+      const actionText = uiText(this, kx + 52, ky, action, 10, '#8fa8b3').setOrigin(0, 0.5);
+      controlEls.push(keyText, actionText);
+      this.briefingExtras.push(keyBg);
+    });
+
+    const closeBtn = this.makeButton(x + w - 34, y + 26, 32, 32, 'X', COLORS.red, false, () => this.closeBriefing());
+
+    const startBtn = this.makeButton(cx, y + h - 28, 220, 44, '▶  BEGIN DIVE', COLORS.green, true, () => this.startGame());
+
+    this.briefing = this.add.container(0, 0, [
+      backdrop,
+      panel,
+      panelShield,
+      title,
+      sub,
+      body,
+      ...controlEls,
+      ...this.briefingExtras,
+      closeBtn.box,
+      closeBtn.label,
+      startBtn.box,
+      startBtn.label,
+    ]);
+    this.briefing.setDepth(500).setVisible(false);
+  }
+
+  private briefing!: Phaser.GameObjects.Container;
+  private briefingExtras: Phaser.GameObjects.GameObject[] = [];
+
+  private openBriefing(): void {
+    this.briefing.setVisible(true);
+    this.briefing.setAlpha(0);
+    this.tweens.add({ targets: this.briefing, alpha: 1, duration: 160 });
+  }
+
+  private closeBriefing(): void {
+    if (!this.briefing.visible) return;
+    this.tweens.add({ targets: this.briefing, alpha: 0, duration: 140, onComplete: () => this.briefing.setVisible(false) });
   }
 
   private startGame(): void {

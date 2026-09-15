@@ -1,8 +1,8 @@
 {
-  "name": "neon-diver",
+  "name": "kraken-dead-signal",
   "private": true,
   "version": "0.1.0",
-  "description": "NEON DIVER — Deeper Than Safe. Cyberpunk underwater survival.",
+  "description": "KRAKEN — Dead Signal. Cyberpunk underwater survival.",
   "type": "module",
   "scripts": {
     "dev": "vite",
