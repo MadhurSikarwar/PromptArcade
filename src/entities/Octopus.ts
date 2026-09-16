@@ -14,6 +14,7 @@ const EYE_COLORS: Record<string, number> = {
 /** A-3 visuals: cybernetic mantle sprite, eight procedurally animated tentacles, bioluminescent eyes visible in darkness. */
 export class Octopus {
   readonly brain: OctopusBrain;
+  private readonly shadow: Phaser.GameObjects.Image;
   private readonly body: Phaser.GameObjects.Image;
   private readonly tentacles: Phaser.GameObjects.Graphics;
   private readonly eyes: Phaser.GameObjects.Image[];
@@ -22,6 +23,8 @@ export class Octopus {
 
   constructor(scene: Phaser.Scene, world: OctopusWorld, x: number, y: number) {
     this.brain = new OctopusBrain(world, x, y);
+    // A big, soft cast shadow under the whole mass — sells scale and "this is above the floor".
+    this.shadow = scene.add.image(x, y + 10, TEXTURES.glow).setTint(0x000000).setAlpha(0.5).setScale(1.4, 0.55).setDepth(DEPTH.octopus - 1);
     this.tentacles = scene.add.graphics().setDepth(DEPTH.octopus);
     this.body = scene.add.image(x, y, TEXTURES.octopus).setScale(0.5).setDepth(DEPTH.octopus);
     this.eyes = [0, 1].map(() => scene.add.image(x, y, TEXTURES.glow).setScale(0.22).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.aboveDark));
@@ -54,6 +57,9 @@ export class Octopus {
 
     this.body.setPosition(b.x, b.y).setRotation(b.facing).setScale(0.5 * pulse);
     this.body.setTint(stunned && Math.random() < 0.5 ? 0x8899aa : 0xffffff);
+
+    const shadowStretch = state === 'HUNT' ? 1.15 : stunned ? 0.85 : 1;
+    this.shadow.setPosition(b.x, b.y + 10).setScale(1.4 * shadowStretch, 0.55 * (stunned ? 0.7 : 1)).setAlpha(stunned ? 0.3 : 0.5);
 
     const g = this.tentacles;
     g.clear();
@@ -114,6 +120,7 @@ export class Octopus {
   }
 
   destroy(): void {
+    this.shadow.destroy();
     this.body.destroy();
     this.tentacles.destroy();
     this.sparks.destroy();

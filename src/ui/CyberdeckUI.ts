@@ -24,7 +24,8 @@ export class CyberdeckUI {
   constructor(
     scene: Phaser.Scene,
     private readonly state: GameState,
-    private readonly cooldown: (action: 'cameras' | 'seal' | 'lights' | 'decoy') => number,
+    private readonly cooldown: (action: 'cameras' | 'seal' | 'lights' | 'decoy' | 'drones') => number,
+    private readonly droneStatus: () => { total: number; alert: number },
   ) {
     const { x, y } = this;
     const frame = scene.add.graphics();
@@ -60,11 +61,13 @@ export class CyberdeckUI {
           ? `CLOSE — ${s.octopus.state}`
           : s.octopus.state;
     const looped = now < s.camerasLoopedUntil;
+    const drones = this.droneStatus();
     this.stats.setText(
       [
         `POWER      ${s.facility.power}%`,
         `SECURITY   ${s.facility.lockdown ? 'LOCKDOWN' : s.facility.alert > 50 ? 'HIGH' : 'LOW'}`,
         `CAMERAS    ${looped ? 'LOOPED' : `${s.facility.camerasActive} ACTIVE`}`,
+        `DRONES     ${drones.total === 0 ? 'NONE' : drones.alert > 0 ? `${drones.alert} ALERTED` : `${drones.total} PATROLLING`}`,
         `ALERT      ${Math.round(s.facility.alert)}%`,
         `THREAT     ${threat}`,
       ].join('\n'),
@@ -94,7 +97,7 @@ export class CyberdeckUI {
       g.strokeCircle(ox + n.x, oy + n.y, 12);
     });
 
-    const cd = (a: 'cameras' | 'seal' | 'lights' | 'decoy'): string => {
+    const cd = (a: 'cameras' | 'seal' | 'lights' | 'decoy' | 'drones'): string => {
       const left = this.cooldown(a);
       return left > 0 ? `  (${Math.ceil(left / 1000)}s)` : '';
     };
@@ -104,6 +107,7 @@ export class CyberdeckUI {
         `[2] DOORS     seal nearest door for 12s${cd('seal')}`,
         `[3] LIGHTS    toggle lights in this room${cd('lights')}`,
         `[4] SECURITY  decoy alarm in a distant room${cd('decoy')}`,
+        `[5] DRONES    disable every patrol drone for 15s${cd('drones')}`,
       ].join('\n'),
     );
   }

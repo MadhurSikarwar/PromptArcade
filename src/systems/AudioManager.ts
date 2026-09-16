@@ -35,6 +35,22 @@ class AudioManager {
   private ambNodes: AudioScheduledSourceNode[] = [];
   private dripTimer: number | null = null;
   private ambience: AmbienceKind = 'none';
+  private readonly baseVolume = 0.7;
+  private muted = false;
+
+  get isMuted(): boolean {
+    return this.muted;
+  }
+
+  setMuted(muted: boolean): void {
+    this.muted = muted;
+    if (this.master) this.master.gain.value = muted ? 0 : this.baseVolume;
+  }
+
+  toggleMute(): boolean {
+    this.setMuted(!this.muted);
+    return this.muted;
+  }
 
   unlock(): void {
     try {
@@ -42,7 +58,7 @@ class AudioManager {
         const Ctor = window.AudioContext;
         this.ctx = new Ctor();
         this.master = this.ctx.createGain();
-        this.master.gain.value = 0.7;
+        this.master.gain.value = this.muted ? 0 : this.baseVolume;
         this.master.connect(this.ctx.destination);
         this.ambBus = this.ctx.createGain();
         this.ambBus.gain.value = 1;

@@ -4,6 +4,7 @@ import { EndingScene } from '../scenes/EndingScene';
 import { GameOverScene } from '../scenes/GameOverScene';
 import { GameScene } from '../scenes/GameScene';
 import { MainMenuScene } from '../scenes/MainMenuScene';
+import { OpeningScene } from '../scenes/OpeningScene';
 import { PreloadScene } from '../scenes/PreloadScene';
 import { UIScene } from '../scenes/UIScene';
 import { GAME_HEIGHT, GAME_WIDTH } from '../utils/Constants';
@@ -28,6 +29,6 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
         debug: false,
       },
     },
-    scene: [BootScene, PreloadScene, MainMenuScene, GameScene, UIScene, GameOverScene, EndingScene],
+    scene: [BootScene, PreloadScene, OpeningScene, MainMenuScene, GameScene, UIScene, GameOverScene, EndingScene],
   };
 }

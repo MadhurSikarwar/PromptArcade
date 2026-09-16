@@ -13,6 +13,8 @@ export class ThreatIndicator {
   private readonly oxygen: Phaser.GameObjects.Text;
   private readonly holdBar: Phaser.GameObjects.Graphics;
   private readonly holdText: Phaser.GameObjects.Text;
+  private readonly glitchBars: Phaser.GameObjects.Graphics;
+  private readonly destructText: Phaser.GameObjects.Text;
   private redUntil = 0;
   private glitchUntil = 0;
   private holdProgress = 0;
@@ -29,6 +31,9 @@ export class ThreatIndicator {
     this.oxygen = uiText(scene, GAME_WIDTH / 2, GAME_HEIGHT - 190, '', 16, '#19e6ff', true).setOrigin(0.5);
     this.holdBar = scene.add.graphics();
     this.holdText = uiText(scene, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 90, '', 16, '#19e6ff', true).setOrigin(0.5);
+    this.glitchBars = scene.add.graphics().setDepth(901).setBlendMode(Phaser.BlendModes.ADD);
+    this.destructText = uiText(scene, GAME_WIDTH / 2, 48, '', 34, '#ff3b4e', true).setOrigin(0.5).setAlpha(0);
+    this.destructText.setShadow(0, 0, '#ff3b4e', 16, false, true);
   }
 
   fx(kind: 'flash' | 'glitch' | 'shake' | 'red', duration = 400): void {
@@ -62,6 +67,19 @@ export class ThreatIndicator {
     if (now < this.glitchUntil) tintAlpha += Math.random() * 0.1;
     this.tint.setFillStyle(now < this.glitchUntil && Math.random() < 0.5 ? COLORS.magenta : COLORS.red, tintAlpha);
 
+    // Cyberpunk data-tear: a handful of colored horizontal bars, torn sideways and flickering.
+    this.glitchBars.clear();
+    if (now < this.glitchUntil) {
+      const bars = 3 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < bars; i++) {
+        const by = Math.random() * GAME_HEIGHT;
+        const bh = 2 + Math.random() * 10;
+        const bx = (Math.random() - 0.5) * 50;
+        this.glitchBars.fillStyle(Math.random() < 0.5 ? COLORS.cyan : COLORS.magenta, 0.1 + Math.random() * 0.14);
+        this.glitchBars.fillRect(bx, by, GAME_WIDTH, bh);
+      }
+    }
+
     let text = '';
     if (o.spawned) {
       if (o.state === 'HUNT' || o.state === 'ATTACK') text = '▲  A-3 IS HUNTING YOU  ▲';
@@ -77,6 +95,14 @@ export class ThreatIndicator {
     const showHint = o.spawned && (o.state === 'HUNT' || o.state === 'ATTACK') && !s.player.hidden;
     this.escapeHint.setText(showHint ? 'SHIFT SPRINT  ·  [Q] EMP TO STUN  ·  FIND A VENT TO HIDE' : '');
     this.escapeHint.setAlpha(showHint ? 0.85 : 0);
+
+    if (s.destructAt > 0) {
+      const remaining = Math.max(0, s.destructAt - now);
+      const secs = Math.ceil(remaining / 1000);
+      this.destructText.setText(`CORE BREACH — ${secs}s`).setAlpha(0.75 + Math.sin(now * 0.02) * 0.25);
+    } else {
+      this.destructText.setAlpha(0);
+    }
 
     const low = s.player.oxygen < 35;
     this.oxygen.setText(low ? `LOW OXYGEN — ${Math.round(s.player.oxygen)}%  GET OUT OF THE WATER` : '').setAlpha(low ? 0.6 + Math.sin(now * 0.012) * 0.4 : 0);

@@ -20,6 +20,7 @@ export class Player {
   readonly sprite: Phaser.Physics.Arcade.Sprite;
   readonly body: Phaser.Physics.Arcade.Body;
   private readonly glow: Phaser.GameObjects.Image;
+  private readonly shadow: Phaser.GameObjects.Image;
   private readonly keys: MovementKeys;
   private exhausted = false;
   private regenCooldown = 0;
@@ -31,6 +32,9 @@ export class Player {
     y: number,
     private readonly state: GameState,
   ) {
+    // Soft cast shadow, squashed flat and offset — the cheapest possible "this thing has height" cue.
+    this.shadow = scene.add.image(x, y + 7, TEXTURES.glow).setTint(0x000000).setAlpha(0.4).setScale(0.62, 0.24).setDepth(DEPTH.player - 2);
+
     this.glow = scene.add
       .image(x, y, TEXTURES.glow)
       .setTint(COLORS.cyan)
@@ -128,6 +132,7 @@ export class Player {
 
     this.glow.setPosition(this.sprite.x, this.sprite.y);
     this.glow.setAlpha(sprinting ? 0.3 : 0.22);
+    this.shadow.setPosition(this.sprite.x, this.sprite.y + 7);
     this.state.setPlayerPosition(this.sprite.x, this.sprite.y);
   }
 }

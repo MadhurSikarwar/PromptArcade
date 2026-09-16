@@ -301,6 +301,26 @@ export class ObjectiveSystem {
 
     this.add('evac-terminal', ANCHORS.evacTerminal, 'console', COLORS.red, () => 'ACTIVATE EVACUATION CONTROL', () => this.finalReveal(), () => s.hasFlag('inUpperFacility') && !s.hasFlag('finalReveal'));
 
+    this.add(
+      'evac-reactor-terminal',
+      ANCHORS.evacReactorTerminal,
+      'console',
+      COLORS.red,
+      () => 'REMOTE REACTOR OVERRIDE  //  DESTROY THE FACILITY',
+      () => this.triggerDestroyEnding(),
+      () => s.hasFlag('inUpperFacility') && !s.hasFlag('finalReveal'),
+    );
+
+    this.add(
+      'evac-neural-terminal',
+      ANCHORS.evacNeuralTerminal,
+      'console',
+      COLORS.green,
+      () => 'NEURAL CONTAINMENT OVERRIDE  //  FREE A-3',
+      () => this.triggerFreeEnding(),
+      () => s.hasFlag('inUpperFacility') && s.hasFlag('labLog') && !s.hasFlag('finalReveal'),
+    );
+
     this.add('airlock-release', ANCHORS.airlockRelease, 'console', COLORS.cyan, () => 'HOLD [E] — EMERGENCY RELEASE', () => undefined, () => s.hasFlag('finalReveal') && !s.hasFlag('escaped'));
 
     for (const vent of VENTS) {
@@ -446,6 +466,58 @@ export class ObjectiveSystem {
     });
   }
 
+  /** Overload the reactor remotely: same physical escape, but a 60s destruct clock now runs alongside A-3. */
+  private triggerDestroyEnding(): void {
+    const { scene, state: s } = this.d;
+    this.markEvacTerminalsDone();
+    s.setFlag('reactorOverloaded');
+    s.completeObjective('m7-chase');
+    s.events.emit('cinematic', {
+      kind: 'reactor-overload',
+      done: () => {
+        s.setFlag('finalReveal');
+        this.d.lighting.permanentBlackout = true;
+        this.d.doors.getDoor('door-final-airlock')?.open();
+        s.destructAt = scene.time.now + 60000;
+        s.setObjective(OBJECTIVES.destructRun);
+        audio.play('impact');
+        scene.cameras.main.shake(500, 0.008);
+        s.notify('CORE BREACH IN 60 SECONDS', 'danger');
+        scene.time.delayedCall(1800, () => {
+          const spawn = W({ x: 4, y: 39 });
+          this.d.threat.spawn(spawn.x, spawn.y, { hunt: true, final: true });
+          audio.play('roar');
+          s.notify('A-3 IS HERE — RUN FOR THE AIRLOCK!', 'danger');
+        });
+      },
+    });
+  }
+
+  /** Disable A-3's neural link instead of escaping through it: it stops hunting for good, no clock, no chase. */
+  private triggerFreeEnding(): void {
+    const { state: s } = this.d;
+    this.markEvacTerminalsDone();
+    s.setFlag('a3Freed');
+    s.completeObjective('m7-chase');
+    s.events.emit('cinematic', {
+      kind: 'neural-override',
+      done: () => {
+        s.setFlag('finalReveal');
+        this.d.lighting.permanentBlackout = true;
+        this.d.doors.getDoor('door-final-airlock')?.open();
+        this.d.threat.despawn();
+        s.setObjective(OBJECTIVES.freeEscape);
+        s.notify('THE FACILITY IS QUIET. HEAD FOR THE AIRLOCK.', 'success');
+      },
+    });
+  }
+
+  private markEvacTerminalsDone(): void {
+    this.items.get('evac-terminal')?.setDone(true);
+    this.items.get('evac-reactor-terminal')?.setDone(true);
+    this.items.get('evac-neural-terminal')?.setDone(true);
+  }
+
   update(dt: number, now: number): void {
     const s = this.d.state;
     const p = this.d.player();
@@ -461,13 +533,17 @@ export class ObjectiveSystem {
       const door = this.d.doors.getDoor('door-final-airlock');
       const o = this.d.threat.octopus;
       if (door && o) {
+        // Only the standard and "destroy" endings still have a live A-3 to dramatize — the
+        // "free" ending despawned it already, so this simply never fires there.
         o.brain.grab(door.x, door.y - 42);
         o.setGrabTarget({ x: door.x, y: door.y });
+        audio.play('roar');
+        audio.play('impact');
+        this.d.scene.cameras.main.shake(600, 0.01);
+        s.notify('IT HAS THE DOOR — EMERGENCY RELEASE!', 'danger');
+      } else {
+        audio.play('door');
       }
-      audio.play('roar');
-      audio.play('impact');
-      this.d.scene.cameras.main.shake(600, 0.01);
-      s.notify('IT HAS THE DOOR — EMERGENCY RELEASE!', 'danger');
       s.setObjective(OBJECTIVES.release);
     }
     if (!inChamber || this.escaping) return;

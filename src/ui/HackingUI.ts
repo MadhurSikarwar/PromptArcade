@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../systems/AudioManager';
+import { getDifficultyTuning } from '../systems/Difficulty';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../utils/Constants';
 import { drawPanel, uiText } from './UIKit';
 
@@ -73,7 +74,7 @@ export class HackingUI {
     this.rounds = Phaser.Math.Clamp(difficulty, 1, 3);
     this.round = 0;
     this.trace = 0;
-    this.traceSpeed = 1 / (18 - difficulty * 1.5);
+    this.traceSpeed = 1 / ((18 - difficulty * 1.5) * getDifficultyTuning().hackForgivenessMult);
     this.title.setText(`CYBERDECK // BREACH: ${title}`);
     this.container.setVisible(true);
     audio.play('glitch', 0.6);

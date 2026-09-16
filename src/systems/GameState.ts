@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { MISSIONS } from '../data/missions';
-import { COLORS, MAX_EMP_CHARGES, PLAYER_TUNING, START_EMP_CHARGES, START_POWER } from '../utils/Constants';
+import { COLORS, MAX_EMP_CHARGES, PLAYER_TUNING, START_POWER } from '../utils/Constants';
+import { getDifficultyTuning } from './Difficulty';
 import { clamp } from '../utils/Helpers';
 
 export type KeycardLevel = 'security' | 'research' | 'experiment' | 'upper';
@@ -23,8 +24,10 @@ export type DoorState = 'LOCKED' | 'CLOSED' | 'OPEN' | 'DISABLED';
 export type NotifyTone = 'info' | 'success' | 'warning' | 'danger' | 'debug' | 'a3';
 export type LightingMode = 'NORMAL' | 'EMERGENCY' | 'POWER_OFF';
 export type UIModal = 'none' | 'hack' | 'deck' | 'cinematic';
-export type DeckAction = 'cameras' | 'seal' | 'lights' | 'decoy';
-export type CinematicKind = 'security-feeds' | 'final-reveal';
+export type DeckAction = 'cameras' | 'seal' | 'lights' | 'decoy' | 'drones';
+export type CinematicKind = 'awakening' | 'security-feeds' | 'final-reveal' | 'reactor-overload' | 'neural-override';
+
+export type EndingKind = 'escape' | 'destroy' | 'free';
 
 export type FlagId =
   | 'hasPowerCell'
@@ -43,6 +46,8 @@ export type FlagId =
   | 'inUpperFacility'
   | 'finalReveal'
   | 'escaped'
+  | 'reactorOverloaded'
+  | 'a3Freed'
   | 'hubRelayDone'
   | 'tutorialThreat'
   | 'tutorialEmp'
@@ -192,7 +197,7 @@ export class GameState {
 
   readonly inventory: InventoryData = {
     keycards: { security: false, research: false, experiment: false, upper: false },
-    empCharges: START_EMP_CHARGES,
+    empCharges: getDifficultyTuning().startEmpCharges,
   };
   readonly facility: FacilityData = { power: START_POWER, alert: 0, lockdown: false, lighting: 'POWER_OFF', camerasActive: 0 };
   readonly octopus: OctopusData = { spawned: false, state: 'NOT SPAWNED', awareness: 0, x: 0, y: 0, distance: Infinity };
@@ -215,6 +220,8 @@ export class GameState {
   floodTriggerAt = 0;
   flooding = false;
   floodStartAt = 0;
+  /** 0 = no self-destruct running. Set by the "overload reactor" ending choice. */
+  destructAt = 0;
 
   missionIndex = 0;
   readonly completedObjectives = new Set<string>();
@@ -264,6 +271,13 @@ export class GameState {
 
   hasFlag(flag: FlagId): boolean {
     return this.flags.has(flag);
+  }
+
+  /** Which epilogue plays — decided by what the player chose at Evacuation Control, not by how they physically leave. */
+  getEndingKind(): EndingKind {
+    if (this.flags.has('a3Freed')) return 'free';
+    if (this.flags.has('reactorOverloaded')) return 'destroy';
+    return 'escape';
   }
 
   setFlag(flag: FlagId): void {
@@ -401,6 +415,7 @@ export class GameState {
     this.facility.alert = 0;
     this.facility.lockdown = false;
     this.finalChase = false;
+    this.destructAt = 0;
     this.missionIndex = cp.missionIndex;
     this.completedObjectives.clear();
     for (const id of cp.completedObjectives) this.completedObjectives.add(id);

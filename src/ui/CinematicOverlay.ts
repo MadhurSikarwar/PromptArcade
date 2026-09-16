@@ -14,7 +14,7 @@ interface Feed {
   static: boolean;
 }
 
-/** Scripted security-monitor moments: A-3 on the cameras, and the final "every screen shows you" reveal. */
+/** Scripted full-screen beats: waking into the collapse, A-3 on the security cameras, and the final "every screen shows you" reveal. */
 export class CinematicOverlay {
   private readonly container: Phaser.GameObjects.Container;
   private readonly noise: Phaser.GameObjects.Graphics;
@@ -58,7 +58,7 @@ export class CinematicOverlay {
     this.feeds = [];
     this.labels.length = 0;
     this.caption.setText('');
-    this.big.setAlpha(0);
+    this.big.setAlpha(0).setFontSize(40);
     this.black.setAlpha(0);
     this.container.setVisible(true);
     const t = (ms: number, fn: () => void): void => {
@@ -69,6 +69,92 @@ export class CinematicOverlay {
       this.running = false;
       done();
     };
+
+    if (kind === 'awakening') {
+      this.black.setAlpha(1);
+      audio.play('impact', 0.6);
+      t(500, () => {
+        audio.play('scrape', 0.4);
+        this.black.setAlpha(0.82);
+      });
+      t(1500, () => {
+        this.caption.setText('...EMERGENCY LIGHTING ACTIVE...').setColor('#ff3b4e');
+        this.black.setAlpha(0.5);
+        audio.play('glitch', 0.4);
+      });
+      t(2800, () => {
+        this.black.setAlpha(0.86);
+        this.caption.setText('SOMETHING IS MOVING.');
+        audio.play('scrape', 0.75);
+        this.scene.cameras.main.shake(220, 0.004);
+      });
+      t(4100, () => {
+        audio.play('roar', 0.65);
+        this.big.setText('A—3').setColor('#ff2bd6').setAlpha(1);
+        this.black.setAlpha(0.32);
+      });
+      t(5500, () => {
+        this.caption.setText('GET UP.').setColor('#e8f6ff');
+        this.big.setAlpha(0);
+      });
+      t(6600, () => {
+        this.black.setAlpha(0);
+        this.caption.setText('');
+      });
+      t(7100, finish);
+      return;
+    }
+
+    if (kind === 'reactor-overload') {
+      this.caption.setText('REMOTE REACTOR OVERRIDE ENGAGED').setColor('#ff3b4e');
+      audio.play('alarm', 0.7);
+      this.black.setAlpha(0.55);
+      t(1100, () => {
+        this.caption.setText('CONTAINMENT FIELD COLLAPSING');
+        audio.play('glitch', 0.6);
+        this.scene.cameras.main.shake(200, 0.005);
+      });
+      t(2400, () => {
+        audio.play('power-up', 0.5);
+        this.big.setText('60').setColor('#ff3b4e').setAlpha(1);
+        this.big.setFontSize(96);
+      });
+      t(3600, () => {
+        this.big.setFontSize(40);
+        this.big.setText('SECONDS TO CORE BREACH');
+      });
+      t(4800, () => {
+        this.caption.setText('GET TO THE AIRLOCK. NOW.').setColor('#ffc23a');
+        this.big.setAlpha(0);
+        audio.play('roar', 0.5);
+      });
+      t(5800, finish);
+      return;
+    }
+
+    if (kind === 'neural-override') {
+      this.caption.setText('NEURAL LINK ISOLATED').setColor('#39ff9c');
+      audio.play('glitch', 0.5);
+      this.black.setAlpha(0.5);
+      t(1300, () => {
+        this.caption.setText('CONTAINMENT PROTOCOL DISENGAGED');
+        audio.play('power-down', 0.4);
+      });
+      t(2700, () => {
+        audio.play('roar', 0.3);
+        this.big.setText('IT\'S FREE.').setColor('#39ff9c').setAlpha(1);
+      });
+      t(4200, () => {
+        this.caption.setText('A-3 IS NO LONGER BEING FORCED TO HUNT.').setColor('#7fa6b8');
+        this.big.setAlpha(0);
+      });
+      t(5600, () => {
+        this.black.setAlpha(0);
+        this.caption.setText('');
+      });
+      t(6000, finish);
+      return;
+    }
 
     if (kind === 'security-feeds') {
       const fw = 380;

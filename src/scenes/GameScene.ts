@@ -4,11 +4,13 @@ import { ElectricHazard, FloodZone } from '../entities/Hazard';
 import { Player } from '../entities/Player';
 import { SecurityCamera } from '../entities/SecurityCamera';
 import { FacilityMap, TILE } from '../map/FacilityMap';
-import { ANCHORS, CAMERAS, DOORS, FLOODS, HAZARDS, PLAYER_SPAWN_TILE } from '../map/MapData';
+import { ANCHORS, CAMERAS, DOORS, DRONE_ROUTES, FLOODS, HAZARDS, PLAYER_SPAWN_TILE } from '../map/MapData';
 import { AdaptiveAISystem } from '../systems/AdaptiveAISystem';
 import { AlertSystem } from '../systems/AlertSystem';
 import { audio } from '../systems/AudioManager';
+import { getDifficultyTuning } from '../systems/Difficulty';
 import { DoorSystem } from '../systems/DoorSystem';
+import { DroneSystem } from '../systems/DroneSystem';
 import { FloodSystem } from '../systems/FloodSystem';
 import { getGameState, type DeckAction, type GameState } from '../systems/GameState';
 import { HackingSystem } from '../systems/HackingSystem';
@@ -36,6 +38,7 @@ export class GameScene extends Phaser.Scene {
   private adaptive!: AdaptiveAISystem;
   private alert!: AlertSystem;
   private threat!: ThreatSystem;
+  private drones!: DroneSystem;
   private objective!: ObjectiveSystem;
   private flood!: FloodSystem;
   private securityCameras: SecurityCamera[] = [];
@@ -95,6 +98,8 @@ export class GameScene extends Phaser.Scene {
       alert: this.alert,
       adaptive: this.adaptive,
       player: () => ({ x: this.player.x, y: this.player.y }),
+      droneCount: () => this.drones.count,
+      disableAllDrones: (now, ms) => this.drones.disableAll(now, ms),
     });
     this.registry.set('hacking', this.hacking);
 
@@ -111,6 +116,14 @@ export class GameScene extends Phaser.Scene {
       player: () => ({ x: this.player.x, y: this.player.y, sprinting: this.state.player.movement === 'SPRINT' }),
       onPlayerHit: (fromX, fromY) => this.onPlayerHit(fromX, fromY),
     });
+
+    this.drones = new DroneSystem(this, this.state, DRONE_ROUTES, {
+      alert: this.alert,
+      threat: this.threat,
+      los: (a, b, c, d) => this.threat.los(a, b, c, d),
+      player: () => ({ x: this.player.x, y: this.player.y }),
+    });
+    this.registry.set('drones', this.drones);
 
     const teleportPlayer = (x: number, y: number): void => {
       this.player.sprite.setPosition(x, y);
@@ -156,6 +169,7 @@ export class GameScene extends Phaser.Scene {
     keyboard.on('keydown-TWO', () => this.deckAction('seal'));
     keyboard.on('keydown-THREE', () => this.deckAction('lights'));
     keyboard.on('keydown-FOUR', () => this.deckAction('decoy'));
+    keyboard.on('keydown-FIVE', () => this.deckAction('drones'));
     keyboard.on('keydown-Q', () => this.useEmp());
     keyboard.on('keydown-F', () => this.toggleFlashlight());
 
@@ -169,6 +183,7 @@ export class GameScene extends Phaser.Scene {
       unsubscribe.forEach((off) => off());
       this.doors.destroy();
       this.threat.destroy();
+      this.drones.destroy();
       this.hacking.destroy();
       this.objective.destroy();
       this.noise.destroy();
@@ -183,7 +198,12 @@ export class GameScene extends Phaser.Scene {
       const octoStart = this.map.tileCenter(ANCHORS.hubCenter.x, ANCHORS.hubCenter.y);
       this.threat.spawn(octoStart.x, octoStart.y, { hunt: false });
       this.state.saveCheckpoint();
-      this.time.delayedCall(1200, () => this.state.say('DIVER', 'That floor just gave out... Where am I?'));
+      this.time.delayedCall(400, () => {
+        this.state.events.emit('cinematic', {
+          kind: 'awakening',
+          done: () => this.state.say('DIVER', 'That floor just gave out... Where am I?'),
+        });
+      });
       this.time.delayedCall(6000, () => {
         if (!this.state.hasFlag('tutorialEmp')) {
           this.state.setFlag('tutorialEmp');
@@ -237,6 +257,11 @@ export class GameScene extends Phaser.Scene {
     }
     for (const flood of this.floods) flood.update(now);
 
+    if (this.state.destructAt > 0 && now >= this.state.destructAt && this.state.player.alive) {
+      this.state.destructAt = 0;
+      this.state.damagePlayer(9999, 'CAUGHT IN THE CORE BREACH', now);
+    }
+
     if (!this.state.flooding && this.state.floodTriggerAt > 0 && now >= this.state.floodTriggerAt) {
       this.flood.trigger(now);
     }
@@ -251,7 +276,10 @@ export class GameScene extends Phaser.Scene {
     const sprinting = this.state.player.movement === 'SPRINT';
     this.alert.update(dt, now, seenByCamera, sprinting);
     this.adaptive.update(dt, sprinting, this.lighting.isPlayerInDark(now));
-    if (!threatPaused) this.threat.update(dt, now);
+    if (!threatPaused) {
+      this.threat.update(dt, now);
+      this.drones.update(dt, now);
+    }
     this.objective.update(dt, now);
 
     const octopus = this.threat.octopus;
@@ -293,7 +321,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.state.inventory.empCharges--;
-    this.state.empReadyAt = now + EMP_COOLDOWN_MS;
+    this.state.empReadyAt = now + EMP_COOLDOWN_MS * getDifficultyTuning().empCooldownMult;
     audio.play('emp');
     this.adaptive.record('emp');
     this.state.noise(this.player.x, this.player.y, 500, 'emp');
@@ -305,9 +333,10 @@ export class GameScene extends Phaser.Scene {
     for (const hazard of this.hazards) {
       if (Phaser.Math.Distance.Between(hazard.bounds.centerX, hazard.bounds.centerY, this.player.x, this.player.y) < EMP_STUN_RADIUS) hazard.disable(now, 8000);
     }
+    const dronesDisabled = this.drones.disableNear(this.player.x, this.player.y, EMP_STUN_RADIUS, now, 8000);
     if (this.state.modal === 'deck') this.state.modal = 'none';
     this.state.cyberdeckOfflineUntil = now + 6000;
-    this.state.notify(stunned ? 'EMP DISCHARGED — A-3 STUNNED' : 'EMP DISCHARGED', 'success');
+    this.state.notify(stunned ? 'EMP DISCHARGED — A-3 STUNNED' : dronesDisabled > 0 ? 'EMP DISCHARGED — DRONES DOWN' : 'EMP DISCHARGED', 'success');
   }
 
   private toggleFlashlight(): void {
@@ -369,7 +398,7 @@ export class GameScene extends Phaser.Scene {
       cam.fadeOut(600, 0, 0, 0);
       cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
         this.scene.stop(SCENES.ui);
-        this.scene.start(SCENES.gameOver, { cause });
+        this.scene.start(SCENES.gameOver, { cause, room: this.state.currentRoomName });
       });
     });
   }
@@ -377,13 +406,15 @@ export class GameScene extends Phaser.Scene {
   private onEscape(): void {
     if (this.ending) return;
     this.ending = true;
+    this.state.destructAt = 0;
     this.player.setFrozen(true);
     this.interaction.setEnabled(false);
+    const kind = this.state.getEndingKind();
     const cam = this.cameras.main;
     cam.fadeOut(1400, 0, 12, 20);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.stop(SCENES.ui);
-      this.scene.start(SCENES.ending);
+      this.scene.start(SCENES.ending, { kind });
     });
   }
 }

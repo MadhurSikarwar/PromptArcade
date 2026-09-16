@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import type { HackingSystem } from '../systems/HackingSystem';
+import { audio } from '../systems/AudioManager';
 import { getGameState, startNewRun } from '../systems/GameState';
 import { CinematicOverlay } from '../ui/CinematicOverlay';
 import { CompassUI } from '../ui/CompassUI';
+import type { DroneSystem } from '../systems/DroneSystem';
 import { CyberdeckUI } from '../ui/CyberdeckUI';
 import { HackingUI } from '../ui/HackingUI';
 import { HUD } from '../ui/HUD';
@@ -15,6 +17,7 @@ import { PauseMenu } from '../ui/PauseMenu';
 import { RadarUI } from '../ui/RadarUI';
 import { ThreatIndicator } from '../ui/ThreatIndicator';
 import { WalkthroughUI } from '../ui/WalkthroughUI';
+import { uiText } from '../ui/UIKit';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, SCENES, TEXTURES } from '../utils/Constants';
 import { DebugOverlay } from '../utils/Debug';
 import { requireKeyboard } from '../utils/Helpers';
@@ -48,16 +51,41 @@ export class UIScene extends Phaser.Scene {
     const beam = this.add.rectangle(0, -4, GAME_WIDTH, 2, COLORS.cyan, 0.045).setOrigin(0, 0).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
     this.tweens.add({ targets: beam, y: GAME_HEIGHT, duration: 7000, repeat: -1, ease: 'Sine.easeInOut', yoyo: true });
 
+    // Screen-locked drifting particulate — reads as debris floating right in front of the "lens",
+    // a cheap foreground depth layer that separates the HUD/world behind it from the viewer.
+    this.add
+      .particles(0, 0, TEXTURES.dot, {
+        x: { min: 0, max: GAME_WIDTH },
+        y: { min: 0, max: GAME_HEIGHT },
+        lifespan: 14000,
+        speedX: { min: -6, max: 6 },
+        speedY: { min: -4, max: 8 },
+        scale: { min: 0.08, max: 0.3 },
+        alpha: { start: 0.22, end: 0 },
+        tint: [COLORS.cyan, COLORS.white],
+        frequency: 260,
+        blendMode: Phaser.BlendModes.ADD,
+      })
+      .setDepth(3);
+
     const objective = new ObjectiveUI(this, state);
     const mission = new MissionUI(this, state);
     const feed = new MessageFeed(this);
     this.hud = new HUD(this, state);
     this.debugOverlay = new DebugOverlay(this, state);
     this.pauseMenu = new PauseMenu(this);
-    this.cyberdeck = new CyberdeckUI(this, state, (action) => {
-      const hacking = this.registry.get('hacking') as HackingSystem | undefined;
-      return hacking ? hacking.cooldownLeft(action, this.time.now) : 0;
-    });
+    this.cyberdeck = new CyberdeckUI(
+      this,
+      state,
+      (action) => {
+        const hacking = this.registry.get('hacking') as HackingSystem | undefined;
+        return hacking ? hacking.cooldownLeft(action, this.time.now) : 0;
+      },
+      () => {
+        const drones = this.registry.get('drones') as DroneSystem | undefined;
+        return drones ? { total: drones.count, alert: drones.alertCount } : { total: 0, alert: 0 };
+      },
+    );
     this.hackingUI = new HackingUI(this);
     this.threatIndicator = new ThreatIndicator(this, state);
     this.logPanel = new LogPanel(this);
@@ -104,6 +132,13 @@ export class UIScene extends Phaser.Scene {
     });
     keyboard.on('keydown-H', () => this.walkthrough.toggle());
     keyboard.on('keydown-M', () => this.minimap.toggle());
+
+    const muteLabel = uiText(this, GAME_WIDTH - 20, GAME_HEIGHT - 20, '🔇 AUDIO MUTED — [V] UNMUTE', 12, '#ff3b4e', true).setOrigin(1, 1).setVisible(audio.isMuted);
+    keyboard.on('keydown-V', () => {
+      const muted = audio.toggleMute();
+      muteLabel.setVisible(muted);
+      if (!muted) state.notify('AUDIO ON', 'info');
+    });
   }
 
   override update(time: number, delta: number): void {

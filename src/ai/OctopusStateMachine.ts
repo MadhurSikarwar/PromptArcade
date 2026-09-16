@@ -49,6 +49,9 @@ export class OctopusBrain {
   stunDuration = 5000;
   finalMode = false;
   speedBonus = 0;
+  /** Difficulty knobs — set every frame by ThreatSystem from the active DifficultyTuning. */
+  speedMult = 1;
+  awarenessMult = 1;
   lastKnown = { x: 0, y: 0 };
 
   private path: TilePoint[] = [];
@@ -173,7 +176,7 @@ export class OctopusBrain {
 
     const sees = !this.world.playerHidden() && this.canSee(px, py, d);
     if (sees) {
-      const gain = d < 140 ? 260 : 110 + 160 * Math.max(0, 1 - d / 440);
+      const gain = (d < 140 ? 260 : 110 + 160 * Math.max(0, 1 - d / 440)) * this.awarenessMult;
       this.awareness = Math.min(100, this.awareness + gain * dt);
       this.lastKnown = { x: px, y: py };
     } else {
@@ -337,7 +340,7 @@ export class OctopusBrain {
     const dx = goal.x - this.x;
     const dy = goal.y - this.y;
     const dist = Math.hypot(dx, dy);
-    const targetSpeed = (SPEED[this.state] + this.speedBonus) * (this.finalMode && this.state === 'HUNT' ? 1.24 : 1);
+    const targetSpeed = (SPEED[this.state] + this.speedBonus) * this.speedMult * (this.finalMode && this.state === 'HUNT' ? 1.24 : 1);
     // Ease toward the target speed instead of snapping — no jarring instant burst the moment it spots you.
     this.currentSpeed = damp(this.currentSpeed, targetSpeed, 2, dt);
     const speed = this.currentSpeed;

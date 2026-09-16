@@ -1,5 +1,6 @@
 import { audio } from './AudioManager';
 import type { DoorSystem } from './DoorSystem';
+import { getDifficultyTuning } from './Difficulty';
 import { alertLabel, type GameState } from './GameState';
 
 const LOCKDOWN_MS = 14000;
@@ -34,9 +35,10 @@ export class AlertSystem {
       return;
     }
 
-    if (seenByCamera) this.add(16 * dt);
-    else if (sprinting && s.hasFlag('facilityPower')) this.add(1.4 * dt);
-    else if (!fac.lockdown) s.setAlert(fac.alert - 1.7 * dt);
+    const diff = getDifficultyTuning();
+    if (seenByCamera) this.add(16 * dt * diff.alertGainMult);
+    else if (sprinting && s.hasFlag('facilityPower')) this.add(1.4 * dt * diff.alertGainMult);
+    else if (!fac.lockdown) s.setAlert(fac.alert - 1.7 * dt * diff.alertDecayMult);
 
     const label = alertLabel(fac.alert, fac.lockdown);
     if (label !== this.lastLabel) {
@@ -49,10 +51,11 @@ export class AlertSystem {
 
     if (fac.alert >= 100 && !fac.lockdown) {
       s.setLockdown(true);
-      this.lockdownUntil = now + LOCKDOWN_MS;
+      const lockdownMs = LOCKDOWN_MS * diff.lockdownMsMult;
+      this.lockdownUntil = now + lockdownMs;
       audio.play('alarm');
       s.notify('FACILITY LOCKDOWN', 'danger');
-      const sealed = this.doors.sealNear(s.player.x, s.player.y, 520, 'LOCKDOWN', now, LOCKDOWN_MS);
+      const sealed = this.doors.sealNear(s.player.x, s.player.y, 520, 'LOCKDOWN', now, lockdownMs);
       if (sealed > 0) s.notify(`${sealed} DOORS SEALED NEAR YOU`, 'danger');
       s.noise(s.player.x + (Math.random() - 0.5) * 160, s.player.y + (Math.random() - 0.5) * 160, 1600, 'lockdown');
       s.events.emit('screen-fx', { kind: 'red', duration: 600 });

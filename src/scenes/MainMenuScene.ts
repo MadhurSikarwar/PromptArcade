@@ -1,8 +1,12 @@
 import Phaser from 'phaser';
+import { DIFFICULTY_PRESETS, getDifficulty, setDifficulty, type Difficulty } from '../systems/Difficulty';
 import { startNewRun } from '../systems/GameState';
 import { drawPanel, uiText } from '../ui/UIKit';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, SCENES, TEXTURES } from '../utils/Constants';
-import { requireKeyboard } from '../utils/Helpers';
+import { requireKeyboard, toHex } from '../utils/Helpers';
+
+const DIFFICULTY_ORDER: Difficulty[] = ['easy', 'normal', 'hard'];
+const DIFFICULTY_ACCENT: Record<Difficulty, number> = { easy: COLORS.green, normal: COLORS.cyan, hard: COLORS.red };
 
 const CONTROLS: [string, string][] = [
   ['WASD', 'MOVE'],
@@ -32,6 +36,9 @@ interface Button {
 export class MainMenuScene extends Phaser.Scene {
   private starting = false;
   private octoT = 0;
+  private difficultyBoxes: Partial<Record<Difficulty, Phaser.GameObjects.Rectangle>> = {};
+  private difficultyLabels: Partial<Record<Difficulty, Phaser.GameObjects.Text>> = {};
+  private difficultyTagline!: Phaser.GameObjects.Text;
   private octopusBody!: Phaser.GameObjects.Image;
   private octopusGlow!: Phaser.GameObjects.Image;
   private octopusGlowMagenta!: Phaser.GameObjects.Image;
@@ -120,11 +127,14 @@ export class MainMenuScene extends Phaser.Scene {
       },
     });
 
-    const diveBtn = this.makeButton(cx - 108, GAME_HEIGHT * 0.6, 196, 50, '▶  DIVE IN', COLORS.cyan, true, () => this.startGame());
-    this.makeButton(cx + 108, GAME_HEIGHT * 0.6, 196, 50, '☰  BRIEFING', COLORS.magenta, false, () => this.openBriefing());
+    const diveY = GAME_HEIGHT * 0.6 + 38;
+    this.buildDifficultySelector(cx, GAME_HEIGHT * 0.6 - 66);
+
+    const diveBtn = this.makeButton(cx - 108, diveY, 196, 50, '▶  DIVE IN', COLORS.cyan, true, () => this.startGame());
+    this.makeButton(cx + 108, diveY, 196, 50, '☰  BRIEFING', COLORS.magenta, false, () => this.openBriefing());
     this.pulseButton(diveBtn);
 
-    uiText(this, cx, GAME_HEIGHT * 0.6 + 46, 'PRESS  ENTER  TO  DIVE  ·  OR  CLICK  BRIEFING  FOR  CONTROLS', 11, '#4f7688').setOrigin(0.5);
+    uiText(this, cx, diveY + 46, 'PRESS  ENTER  TO  DIVE  ·  OR  CLICK  BRIEFING  FOR  CONTROLS', 11, '#4f7688').setOrigin(0.5);
 
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.18);
     this.add.image(0, 0, TEXTURES.vignette).setOrigin(0);
@@ -157,6 +167,51 @@ export class MainMenuScene extends Phaser.Scene {
       onClick();
     });
     return { box, label: text };
+  }
+
+  /** Row of three EASY / NORMAL / HARD toggle buttons plus a one-line tagline for the active choice. */
+  private buildDifficultySelector(cx: number, labelY: number): void {
+    uiText(this, cx, labelY, 'DIFFICULTY', 11, '#4f7688', true).setOrigin(0.5);
+
+    const btnW = 96;
+    const gap = 10;
+    const totalW = btnW * 3 + gap * 2;
+    const startX = cx - totalW / 2 + btnW / 2;
+    const buttonsY = labelY + 26;
+
+    DIFFICULTY_ORDER.forEach((id, i) => {
+      const accent = DIFFICULTY_ACCENT[id];
+      const x = startX + i * (btnW + gap);
+      const box = this.add.rectangle(x, buttonsY, btnW, 26, accent, 0.08).setStrokeStyle(1.5, accent, 0.5).setInteractive({ useHandCursor: true });
+      const label = uiText(this, x, buttonsY, DIFFICULTY_PRESETS[id].label, 12, '#8fa8b3', true).setOrigin(0.5);
+      box.on('pointerover', () => {
+        if (getDifficulty() !== id) box.setFillStyle(accent, 0.18);
+      });
+      box.on('pointerout', () => {
+        if (getDifficulty() !== id) box.setFillStyle(accent, 0.08);
+      });
+      box.on('pointerdown', () => this.selectDifficulty(id));
+      this.difficultyBoxes[id] = box;
+      this.difficultyLabels[id] = label;
+    });
+
+    this.difficultyTagline = uiText(this, cx, buttonsY + 22, '', 11, '#6f97a8').setOrigin(0.5);
+    this.selectDifficulty(getDifficulty());
+  }
+
+  private selectDifficulty(id: Difficulty): void {
+    setDifficulty(id);
+    for (const key of DIFFICULTY_ORDER) {
+      const box = this.difficultyBoxes[key];
+      const label = this.difficultyLabels[key];
+      if (!box || !label) continue;
+      const accent = DIFFICULTY_ACCENT[key];
+      const selected = key === id;
+      box.setFillStyle(accent, selected ? 0.34 : 0.08);
+      box.setStrokeStyle(1.5, accent, selected ? 1 : 0.5);
+      label.setColor(selected ? '#eafcff' : '#8fa8b3');
+    }
+    this.difficultyTagline.setText(DIFFICULTY_PRESETS[id].tagline).setColor(toHex(DIFFICULTY_ACCENT[id]));
   }
 
   private pulseButton(btn: Button): void {
@@ -333,7 +388,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.cameras.main.fadeOut(650, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       startNewRun();
-      this.scene.start(SCENES.game);
+      this.scene.start(SCENES.opening);
     });
   }
 }

@@ -7,7 +7,7 @@ import type { DoorSystem } from './DoorSystem';
 import type { DeckAction, GameState } from './GameState';
 import type { LightingSystem } from './LightingSystem';
 
-const COOLDOWNS: Record<DeckAction, number> = { cameras: 35000, seal: 9000, lights: 1500, decoy: 28000 };
+const COOLDOWNS: Record<DeckAction, number> = { cameras: 35000, seal: 9000, lights: 1500, decoy: 28000, drones: 24000 };
 
 export interface HackingDeps {
   doors: DoorSystem;
@@ -16,11 +16,14 @@ export interface HackingDeps {
   alert: AlertSystem;
   adaptive: AdaptiveAISystem;
   player: () => { x: number; y: number };
+  /** Returns how many drones exist in the facility, so the deck can refuse the action when there are none. */
+  droneCount: () => number;
+  disableAllDrones: (now: number, ms: number) => void;
 }
 
 /** Terminal hacks (minigame requests) and Cyberdeck network actions. */
 export class HackingSystem {
-  private readonly readyAt: Record<DeckAction, number> = { cameras: 0, seal: 0, lights: 0, decoy: 0 };
+  private readonly readyAt: Record<DeckAction, number> = { cameras: 0, seal: 0, lights: 0, decoy: 0, drones: 0 };
   private readonly off: () => void;
 
   constructor(
@@ -112,6 +115,16 @@ export class HackingSystem {
         this.deps.alert.add(4);
         audio.play('alarm', 0.3);
         this.state.notify(`DECOY ALARM TRIGGERED — ${room.info.name}`, 'success');
+        break;
+      }
+      case 'drones': {
+        if (this.deps.droneCount() === 0) {
+          this.state.notify('NO DRONES ON THE NETWORK', 'warning');
+          ok = false;
+          break;
+        }
+        this.deps.disableAllDrones(now, 15000);
+        this.state.notify('ALL PATROL DRONES DISABLED — 15s', 'success');
         break;
       }
     }

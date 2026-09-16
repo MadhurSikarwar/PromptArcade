@@ -226,6 +226,51 @@ export const VENTS: readonly VentPair[] = [
   { id: 'vent-maint-lab', a: { x: 57, y: 46 }, b: { x: 61, y: 31 } },
 ];
 
+export interface DroneRoute {
+  id: string;
+  /** Tile-space waypoint loop. Kept to straight, prop-free runs so the simple drone AI never needs pathfinding. */
+  waypoints: readonly { x: number; y: number }[];
+}
+
+export const DRONE_ROUTES: readonly DroneRoute[] = [
+  {
+    id: 'drone-security',
+    waypoints: [
+      { x: 46, y: 5 },
+      { x: 51, y: 5 },
+      { x: 51, y: 11 },
+      { x: 46, y: 11 },
+    ],
+  },
+  {
+    id: 'drone-server',
+    waypoints: [
+      { x: 61, y: 5 },
+      { x: 65, y: 5 },
+      { x: 65, y: 11 },
+      { x: 61, y: 11 },
+    ],
+  },
+  {
+    id: 'drone-wing',
+    waypoints: [
+      { x: 82, y: 23 },
+      { x: 92, y: 23 },
+      { x: 92, y: 30 },
+      { x: 82, y: 30 },
+    ],
+  },
+  {
+    id: 'drone-maintenance',
+    waypoints: [
+      { x: 46, y: 39 },
+      { x: 57, y: 39 },
+      { x: 57, y: 44 },
+      { x: 46, y: 44 },
+    ],
+  },
+];
+
 export const EMP_STATIONS: readonly { id: string; x: number; y: number }[] = [
   { id: 'emp-storage', x: 39, y: 24 },
   { id: 'emp-observation', x: 90, y: 38 },
@@ -263,6 +308,8 @@ export const ANCHORS = {
   tankA04: { x: 77, y: 12 },
   wingTerminal: { x: 88, y: 28 },
   evacTerminal: { x: 4, y: 47 },
+  evacReactorTerminal: { x: 8, y: 47 },
+  evacNeuralTerminal: { x: 14, y: 47 },
   airlockRelease: { x: 19, y: 53 },
   hubCenter: { x: 48, y: 21 },
   upperEntry: { x: 7, y: 39 },

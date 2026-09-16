@@ -5,9 +5,10 @@ import type { ElectricHazard } from '../entities/Hazard';
 import { Octopus } from '../entities/Octopus';
 import type { SecurityCamera } from '../entities/SecurityCamera';
 import { TILE, type FacilityMap } from '../map/FacilityMap';
-import { TILE_SIZE } from '../utils/Constants';
+import { CAMERA_ZOOM, TILE_SIZE } from '../utils/Constants';
 import type { AdaptiveAISystem } from './AdaptiveAISystem';
 import { audio } from './AudioManager';
+import { getDifficultyTuning } from './Difficulty';
 import type { DoorSystem } from './DoorSystem';
 import type { GameState } from './GameState';
 import type { LightingSystem } from './LightingSystem';
@@ -129,12 +130,20 @@ export class ThreatSystem {
     return { x: pick.centerX + (Math.random() - 0.5) * pick.bounds.width * 0.5, y: pick.centerY + (Math.random() - 0.5) * pick.bounds.height * 0.5 };
   }
 
+  /** Quick zoom-in-then-settle "camera punch" — a cheap cinematic depth cue for a 2D top-down game. */
+  private zoomPunch(strength: number, inMs: number, outMs: number): void {
+    const cam = this.scene.cameras.main;
+    cam.zoomTo(CAMERA_ZOOM * strength, inMs, 'Cubic.easeOut');
+    this.scene.time.delayedCall(inMs, () => cam.zoomTo(CAMERA_ZOOM, outMs, 'Cubic.easeOut'));
+  }
+
   private onStateChange(next: OctoState, prev: OctoState): void {
     this.state.octopus.state = next;
     if (next === 'HUNT' && prev !== 'ATTACK' && prev !== 'FORCING' && prev !== 'STUNNED') {
       audio.play('roar');
       this.state.notify('A-3 IS HUNTING YOU — RUN OR HIDE!', 'danger');
       this.scene.cameras.main.shake(260, 0.004);
+      this.zoomPunch(1.05, 140, 380);
       if (!this.state.hasFlag('tutorialThreat')) {
         this.state.setFlag('tutorialThreat');
         this.state.notify('RUN! IT SAW YOU. USE [Q] EMP OR FIND A VENT.', 'warning');
@@ -144,6 +153,7 @@ export class ThreatSystem {
       audio.play('roar', 0.85);
       this.state.notify('⚠ A-3 IS ATTACKING — GET AWAY!', 'danger');
       this.scene.cameras.main.shake(220, 0.007);
+      this.zoomPunch(1.1, 90, 260);
     }
     if (next === 'SEARCH' && prev === 'HUNT') this.state.notify('A-3 LOST SIGHT OF YOU — IT IS SEARCHING', 'warning');
   }
@@ -182,6 +192,11 @@ export class ThreatSystem {
     this.octopus?.brain.reportSighting(x, y, now);
   }
 
+  /** A patrol drone flagged the player — same facility-information channel as a camera sighting. */
+  droneSighting(x: number, y: number, now: number): void {
+    this.octopus?.brain.reportSighting(x, y, now);
+  }
+
   ventUsed(exitX: number, exitY: number, now: number): void {
     if (this.octopus && this.deps.adaptive.has('vents')) this.octopus.brain.hear(exitX, exitY, 5000, now);
   }
@@ -191,9 +206,12 @@ export class ThreatSystem {
     if (!o) return;
     const p = this.deps.player();
     const brain = o.brain;
-    brain.hearingMult = this.deps.adaptive.has('footsteps') ? 1.45 : 1;
+    const diff = getDifficultyTuning();
+    brain.hearingMult = (this.deps.adaptive.has('footsteps') ? 1.45 : 1) * diff.hearingMult;
     brain.forceDuration = this.deps.adaptive.has('doors') ? 0.6 : 1.5;
-    brain.stunDuration = this.deps.adaptive.has('emp') ? 3200 : 5000;
+    brain.stunDuration = (this.deps.adaptive.has('emp') ? 3200 : 5000) * diff.stunDurationMult;
+    brain.speedMult = diff.speedMult;
+    brain.awarenessMult = diff.awarenessMult;
     // Slow and manageable in Mission 1, ramping up as later missions (now 4 total) raise the stakes.
     brain.speedBonus = this.state.missionIndex * 19 - 18 + (this.state.facility.alert >= 50 ? 14 : 0);
 
