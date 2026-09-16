@@ -1,4 +1,4 @@
-export type Difficulty = 'easy' | 'normal' | 'hard';
+export type Difficulty = 'easy' | 'normal' | 'hard' | 'nightmare';
 
 export interface DifficultyTuning {
   id: Difficulty;
@@ -20,6 +20,10 @@ export interface DifficultyTuning {
   empCooldownMult: number;
   stunDurationMult: number;
   lockdownMsMult: number;
+  /** Multiplies A-3's attack damage on top of the growth curve driven by mission progress. */
+  damageMult: number;
+  /** Multiplies how large A-3 visually grows as the run progresses. */
+  growthMult: number;
 }
 
 export const DIFFICULTY_PRESETS: Record<Difficulty, DifficultyTuning> = {
@@ -37,6 +41,8 @@ export const DIFFICULTY_PRESETS: Record<Difficulty, DifficultyTuning> = {
     empCooldownMult: 0.7,
     stunDurationMult: 1.35,
     lockdownMsMult: 0.7,
+    damageMult: 0.78,
+    growthMult: 0.8,
   },
   normal: {
     id: 'normal',
@@ -52,6 +58,8 @@ export const DIFFICULTY_PRESETS: Record<Difficulty, DifficultyTuning> = {
     empCooldownMult: 1,
     stunDurationMult: 1,
     lockdownMsMult: 1,
+    damageMult: 1,
+    growthMult: 1,
   },
   hard: {
     id: 'hard',
@@ -67,6 +75,25 @@ export const DIFFICULTY_PRESETS: Record<Difficulty, DifficultyTuning> = {
     empCooldownMult: 1.3,
     stunDurationMult: 0.68,
     lockdownMsMult: 1.3,
+    damageMult: 1.25,
+    growthMult: 1.2,
+  },
+  nightmare: {
+    id: 'nightmare',
+    label: 'NIGHTMARE',
+    tagline: 'It grows fast, hits hard, and never fully calms down.',
+    awarenessMult: 1.7,
+    hearingMult: 1.55,
+    speedMult: 1.3,
+    alertGainMult: 1.7,
+    alertDecayMult: 0.5,
+    hackForgivenessMult: 0.55,
+    startEmpCharges: 1,
+    empCooldownMult: 1.6,
+    stunDurationMult: 0.5,
+    lockdownMsMult: 1.6,
+    damageMult: 1.6,
+    growthMult: 1.5,
   },
 };
 

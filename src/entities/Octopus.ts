@@ -54,12 +54,13 @@ export class Octopus {
     const moving = state === 'PATROL' || state === 'RETURN' || state === 'INVESTIGATE' || state === 'SEARCH' || state === 'HUNT';
     const stunned = state === 'STUNNED';
     const pulse = state === 'HUNT' ? 1.05 + Math.sin(now * 0.02) * 0.03 : 1 + Math.sin(now * 0.004) * 0.02;
+    const growth = b.growthScale;
 
-    this.body.setPosition(b.x, b.y).setRotation(b.facing).setScale(0.5 * pulse);
+    this.body.setPosition(b.x, b.y).setRotation(b.facing).setScale(0.5 * pulse * growth);
     this.body.setTint(stunned && Math.random() < 0.5 ? 0x8899aa : 0xffffff);
 
     const shadowStretch = state === 'HUNT' ? 1.15 : stunned ? 0.85 : 1;
-    this.shadow.setPosition(b.x, b.y + 10).setScale(1.4 * shadowStretch, 0.55 * (stunned ? 0.7 : 1)).setAlpha(stunned ? 0.3 : 0.5);
+    this.shadow.setPosition(b.x, b.y + 10 * growth).setScale(1.4 * shadowStretch * growth, 0.55 * (stunned ? 0.7 : 1) * growth).setAlpha(stunned ? 0.3 : 0.5);
 
     const g = this.tentacles;
     g.clear();
@@ -75,16 +76,16 @@ export class Octopus {
       if (this.grabTarget && (i === 3 || i === 4)) {
         angle = Math.atan2(this.grabTarget.y - b.y, this.grabTarget.x - b.x) + (i === 3 ? -0.1 : 0.1);
       }
-      let x = b.x + Math.cos(angle) * 18;
-      let y = b.y + Math.sin(angle) * 18;
+      let x = b.x + Math.cos(angle) * 18 * growth;
+      let y = b.y + Math.sin(angle) * 18 * growth;
       const segments = 10;
-      const segLength = (stunned ? 6 : 7.5) * reach;
+      const segLength = (stunned ? 6 : 7.5) * reach * growth;
       for (let s = 0; s < segments; s++) {
         const wave = Math.sin(now * 0.005 * speedFactor + i * 1.3 + s * 0.55) * (stunned ? 0.12 : 0.34);
         angle += wave * 0.35;
         const nx = x + Math.cos(angle) * segLength;
         const ny = y + Math.sin(angle) * segLength;
-        const width = Math.max(1.2, 8.5 - s * 0.8);
+        const width = Math.max(1.2, 8.5 - s * 0.8) * growth;
         g.lineStyle(width + 2, 0x020406, 0.9);
         g.lineBetween(x, y, nx, ny);
         g.lineStyle(width, s % 3 === 0 ? 0x1c2a33 : 0x121a21, 1);

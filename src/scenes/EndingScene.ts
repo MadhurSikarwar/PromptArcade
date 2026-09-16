@@ -70,6 +70,7 @@ export class EndingScene extends Phaser.Scene {
   create(): void {
     this.stage = new ThreeStage(10);
     this.experience = new EndingExperience(this.stage.aspect);
+    this.stage.usePostProcessing(this.experience.scene, this.experience.camera);
     audio.setAmbience('ocean');
     this.hintEl = this.makeSkipHint();
 

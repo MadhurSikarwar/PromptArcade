@@ -216,6 +216,8 @@ export class GameState {
   camerasLoopedUntil = 0;
   finalChase = false;
   hasSpawned = false;
+  /** Phaser clock time (ms) the run started — set once on a fresh run, used to score/log elapsed time. */
+  runStartedAt = 0;
   empReadyAt = 0;
   floodTriggerAt = 0;
   flooding = false;

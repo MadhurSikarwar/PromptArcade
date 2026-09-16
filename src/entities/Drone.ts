@@ -86,6 +86,15 @@ export class Drone {
       coneG.slice(b.x, hoverY, VISION_RANGE, b.facing - VISION_FOV / 2, b.facing + VISION_FOV / 2, false);
       coneG.fillPath();
     }
+
+    if (b.isFiring) {
+      const flashX = b.x + Math.cos(b.facing) * 11;
+      const flashY = hoverY + Math.sin(b.facing) * 11;
+      g.fillStyle(0xffffff, 0.95);
+      g.fillCircle(flashX, flashY, 4);
+      g.fillStyle(COLORS.red, 0.55);
+      g.fillCircle(flashX, flashY, 8);
+    }
     void now;
   }
 

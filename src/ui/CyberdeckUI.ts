@@ -1,7 +1,20 @@
 import Phaser from 'phaser';
-import type { GameState } from '../systems/GameState';
+import type { DeckAction, GameState } from '../systems/GameState';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TEXTURES } from '../utils/Constants';
 import { drawPanel, uiText } from './UIKit';
+
+interface ActionRow {
+  action: DeckAction;
+  text: string;
+}
+
+const ACTION_ROWS: ActionRow[] = [
+  { action: 'cameras', text: '[1] CAMERAS   loop every feed for 20s' },
+  { action: 'seal', text: '[2] DOORS     seal nearest door for 12s' },
+  { action: 'lights', text: '[3] LIGHTS    toggle lights in this room' },
+  { action: 'decoy', text: '[4] SECURITY  decoy alarm in a distant room' },
+  { action: 'drones', text: '[5] DRONES    disable every patrol drone for 15s' },
+];
 
 const NODES: { id: string; label: string; x: number; y: number; flag: 'securityOnline' | 'generatorOn' | 'powerRouted' | 'facilityPower' | 'serverData' }[] = [
   { id: 'lab', label: 'LAB', x: 0, y: 0, flag: 'serverData' },
@@ -16,7 +29,7 @@ const LINKS: [number, number][] = [[0, 1], [1, 2], [0, 3], [1, 3], [2, 4], [3, 4
 export class CyberdeckUI {
   private readonly container: Phaser.GameObjects.Container;
   private readonly stats: Phaser.GameObjects.Text;
-  private readonly actions: Phaser.GameObjects.Text;
+  private readonly actionTexts: Phaser.GameObjects.Text[] = [];
   private readonly net: Phaser.GameObjects.Graphics;
   private readonly x = (GAME_WIDTH - 720) / 2;
   private readonly y = (GAME_HEIGHT - 420) / 2;
@@ -37,9 +50,22 @@ export class CyberdeckUI {
     this.stats = uiText(scene, x + 22, y + 60, '', 15, '#ffd6f6').setLineSpacing(8);
     this.net = scene.add.graphics();
     const netLabels = NODES.map((n) => uiText(scene, x + 330 + n.x, y + 96 + n.y, n.label, 11, '#ffb8ee').setOrigin(0.5, 0));
-    this.actions = uiText(scene, x + 22, y + 258, '', 14, '#e8f6ff').setLineSpacing(9);
-    const hint = uiText(scene, x + 720 - 22, y + 420 - 30, '[TAB] CLOSE', 12, '#8f5f8a').setOrigin(1, 0);
-    this.container = scene.add.container(0, 0, [frame, scan, title, this.stats, this.net, ...netLabels, this.actions, hint]).setDepth(700).setVisible(false);
+
+    const rowHitAreas: Phaser.GameObjects.Rectangle[] = [];
+    ACTION_ROWS.forEach((row, i) => {
+      const rowY = y + 258 + i * 23;
+      // Tap target spans the full row width so mobile players can trigger deck actions without a keyboard.
+      const hit = scene.add.rectangle(x + 22, rowY - 2, 500, 22, 0xffffff, 0).setOrigin(0, 0).setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => hit.setFillStyle(COLORS.magenta, 0.08));
+      hit.on('pointerout', () => hit.setFillStyle(0xffffff, 0));
+      hit.on('pointerdown', () => state.events.emit('deck-action', { action: row.action }));
+      rowHitAreas.push(hit);
+      const text = uiText(scene, x + 22, rowY, row.text, 14, '#e8f6ff').setLineSpacing(9);
+      this.actionTexts.push(text);
+    });
+
+    const hint = uiText(scene, x + 720 - 22, y + 420 - 30, '[TAB] CLOSE  ·  TAP A ROW TO USE IT', 12, '#8f5f8a').setOrigin(1, 0);
+    this.container = scene.add.container(0, 0, [frame, scan, title, this.stats, this.net, ...netLabels, ...rowHitAreas, ...this.actionTexts, hint]).setDepth(700).setVisible(false);
   }
 
   get isOpen(): boolean {
@@ -97,18 +123,11 @@ export class CyberdeckUI {
       g.strokeCircle(ox + n.x, oy + n.y, 12);
     });
 
-    const cd = (a: 'cameras' | 'seal' | 'lights' | 'decoy' | 'drones'): string => {
-      const left = this.cooldown(a);
-      return left > 0 ? `  (${Math.ceil(left / 1000)}s)` : '';
-    };
-    this.actions.setText(
-      [
-        `[1] CAMERAS   loop every feed for 20s${cd('cameras')}`,
-        `[2] DOORS     seal nearest door for 12s${cd('seal')}`,
-        `[3] LIGHTS    toggle lights in this room${cd('lights')}`,
-        `[4] SECURITY  decoy alarm in a distant room${cd('decoy')}`,
-        `[5] DRONES    disable every patrol drone for 15s${cd('drones')}`,
-      ].join('\n'),
-    );
+    ACTION_ROWS.forEach((row, i) => {
+      const left = this.cooldown(row.action);
+      const suffix = left > 0 ? `  (${Math.ceil(left / 1000)}s)` : '';
+      const text = this.actionTexts[i];
+      text.setText(row.text + suffix).setAlpha(left > 0 ? 0.5 : 1);
+    });
   }
 }

@@ -31,19 +31,21 @@ export class Player {
     x: number,
     y: number,
     private readonly state: GameState,
+    textureKey: string = TEXTURES.player,
+    accentColor: number = COLORS.cyan,
   ) {
     // Soft cast shadow, squashed flat and offset — the cheapest possible "this thing has height" cue.
     this.shadow = scene.add.image(x, y + 7, TEXTURES.glow).setTint(0x000000).setAlpha(0.4).setScale(0.62, 0.24).setDepth(DEPTH.player - 2);
 
     this.glow = scene.add
       .image(x, y, TEXTURES.glow)
-      .setTint(COLORS.cyan)
+      .setTint(accentColor)
       .setAlpha(0.22)
       .setScale(1.1)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(DEPTH.player - 1);
 
-    this.sprite = scene.physics.add.sprite(x, y, TEXTURES.player).setScale(SPRITE_SCALE).setDepth(DEPTH.player);
+    this.sprite = scene.physics.add.sprite(x, y, textureKey).setScale(SPRITE_SCALE).setDepth(DEPTH.player);
     this.body = this.sprite.body as Phaser.Physics.Arcade.Body;
     const size = PLAYER_TUNING.bodySize / SPRITE_SCALE;
     this.body.setSize(size, size, true);

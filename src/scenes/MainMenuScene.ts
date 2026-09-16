@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
+import { getCurrentProfile, logOut } from '../profile/Session';
 import { DIFFICULTY_PRESETS, getDifficulty, setDifficulty, type Difficulty } from '../systems/Difficulty';
 import { startNewRun } from '../systems/GameState';
 import { drawPanel, uiText } from '../ui/UIKit';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, SCENES, TEXTURES } from '../utils/Constants';
 import { requireKeyboard, toHex } from '../utils/Helpers';
 
-const DIFFICULTY_ORDER: Difficulty[] = ['easy', 'normal', 'hard'];
-const DIFFICULTY_ACCENT: Record<Difficulty, number> = { easy: COLORS.green, normal: COLORS.cyan, hard: COLORS.red };
+const DIFFICULTY_ORDER: Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
+const DIFFICULTY_ACCENT: Record<Difficulty, number> = { easy: COLORS.green, normal: COLORS.cyan, hard: COLORS.yellow, nightmare: COLORS.red };
 
 const CONTROLS: [string, string][] = [
   ['WASD', 'MOVE'],
@@ -104,6 +105,8 @@ export class MainMenuScene extends Phaser.Scene {
       blendMode: Phaser.BlendModes.ADD,
     });
 
+    this.buildBokeh();
+
     this.octoT = 0;
     this.buildBackgroundOctopus();
 
@@ -113,11 +116,10 @@ export class MainMenuScene extends Phaser.Scene {
       .setBlendMode(Phaser.BlendModes.ADD);
     const title = uiText(this, cx, GAME_HEIGHT * 0.34, 'KRAKEN', 108, '#19e6ff', true).setOrigin(0.5);
     title.setShadow(0, 0, '#19e6ff', 26, false, true);
+    const subtitle = uiText(this, cx, GAME_HEIGHT * 0.34 + 80, '—  D E A D   S I G N A L  —', 22, '#ff5fd8', true).setOrigin(0.5);
+    const tagline = uiText(this, cx, GAME_HEIGHT * 0.34 + 112, 'POSEIDON RESEARCH FACILITY // TRANSMISSION LOST', 11, '#4f7688', true).setOrigin(0.5);
 
-    uiText(this, cx, GAME_HEIGHT * 0.34 + 80, '—  D E A D   S I G N A L  —', 22, '#ff5fd8', true).setOrigin(0.5);
-    uiText(this, cx, GAME_HEIGHT * 0.34 + 112, 'POSEIDON RESEARCH FACILITY // TRANSMISSION LOST', 11, '#4f7688', true).setOrigin(0.5);
-
-    // Occasional failing-neon flicker on the title.
+    // Occasional failing-neon flicker on the title, plus a slow ambient breathing scale for life.
     this.time.addEvent({
       delay: 2400,
       loop: true,
@@ -126,20 +128,37 @@ export class MainMenuScene extends Phaser.Scene {
         ghost.setX(cx + Phaser.Math.Between(-6, 6));
       },
     });
+    this.tweens.add({ targets: [title, ghost], scale: { from: 1, to: 1.015 }, duration: 3400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+    const heroGroup = this.add.container(0, 0, [ghost, title, subtitle, tagline]);
 
     const diveY = GAME_HEIGHT * 0.6 + 38;
-    this.buildDifficultySelector(cx, GAME_HEIGHT * 0.6 - 66);
+    const difficultyEls = this.buildDifficultySelector(cx, GAME_HEIGHT * 0.6 - 66);
 
     const diveBtn = this.makeButton(cx - 108, diveY, 196, 50, '▶  DIVE IN', COLORS.cyan, true, () => this.startGame());
-    this.makeButton(cx + 108, diveY, 196, 50, '☰  BRIEFING', COLORS.magenta, false, () => this.openBriefing());
+    const briefingBtn = this.makeButton(cx + 108, diveY, 196, 50, '☰  BRIEFING', COLORS.magenta, false, () => this.openBriefing());
     this.pulseButton(diveBtn);
+    const hint = uiText(this, cx, diveY + 46, 'PRESS  ENTER  TO  DIVE  ·  OR  CLICK  BRIEFING  FOR  CONTROLS', 11, '#4f7688').setOrigin(0.5);
 
-    uiText(this, cx, diveY + 46, 'PRESS  ENTER  TO  DIVE  ·  OR  CLICK  BRIEFING  FOR  CONTROLS', 11, '#4f7688').setOrigin(0.5);
+    const actionGroup = this.add.container(0, 0, [...difficultyEls, diveBtn.box, diveBtn.label, briefingBtn.box, briefingBtn.label, hint]);
+
+    // Feature strip — the "landing page" content that lives after the DIVE IN button.
+    const featureEls = this.buildFeatureStrip(cx, diveY + 82);
+    const featureGroup = this.add.container(0, 0, featureEls);
+
+    const profileEls = this.buildProfileBar();
+    const profileGroup = this.add.container(0, 0, profileEls);
 
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, TEXTURES.scanlines).setOrigin(0).setAlpha(0.18);
     this.add.image(0, 0, TEXTURES.vignette).setOrigin(0);
 
     this.buildBriefingModal();
+
+    // Landing-page reveal: hero first, then the call-to-action, then supporting content, chrome last.
+    this.revealGroup(heroGroup, 0);
+    this.revealGroup(actionGroup, 180);
+    this.revealGroup(featureGroup, 360);
+    this.revealGroup(profileGroup, 80, 14);
 
     const keyboard = requireKeyboard(this);
     keyboard.on('keydown-ENTER', () => this.startGame());
@@ -169,13 +188,14 @@ export class MainMenuScene extends Phaser.Scene {
     return { box, label: text };
   }
 
-  /** Row of three EASY / NORMAL / HARD toggle buttons plus a one-line tagline for the active choice. */
-  private buildDifficultySelector(cx: number, labelY: number): void {
-    uiText(this, cx, labelY, 'DIFFICULTY', 11, '#4f7688', true).setOrigin(0.5);
+  /** Row of four difficulty toggle buttons plus a one-line tagline for the active choice. Returns everything it created so the caller can group/animate it. */
+  private buildDifficultySelector(cx: number, labelY: number): Phaser.GameObjects.GameObject[] {
+    const created: Phaser.GameObjects.GameObject[] = [];
+    created.push(uiText(this, cx, labelY, 'DIFFICULTY', 11, '#4f7688', true).setOrigin(0.5));
 
-    const btnW = 96;
-    const gap = 10;
-    const totalW = btnW * 3 + gap * 2;
+    const btnW = 90;
+    const gap = 8;
+    const totalW = btnW * DIFFICULTY_ORDER.length + gap * (DIFFICULTY_ORDER.length - 1);
     const startX = cx - totalW / 2 + btnW / 2;
     const buttonsY = labelY + 26;
 
@@ -193,10 +213,13 @@ export class MainMenuScene extends Phaser.Scene {
       box.on('pointerdown', () => this.selectDifficulty(id));
       this.difficultyBoxes[id] = box;
       this.difficultyLabels[id] = label;
+      created.push(box, label);
     });
 
     this.difficultyTagline = uiText(this, cx, buttonsY + 22, '', 11, '#6f97a8').setOrigin(0.5);
+    created.push(this.difficultyTagline);
     this.selectDifficulty(getDifficulty());
+    return created;
   }
 
   private selectDifficulty(id: Difficulty): void {
@@ -212,6 +235,119 @@ export class MainMenuScene extends Phaser.Scene {
       label.setColor(selected ? '#eafcff' : '#8fa8b3');
     }
     this.difficultyTagline.setText(DIFFICULTY_PRESETS[id].tagline).setColor(toHex(DIFFICULTY_ACCENT[id]));
+  }
+
+  /** Three info cards below the DIVE IN button — what makes this game's loop distinct, at a glance. */
+  private buildFeatureStrip(cx: number, topY: number): Phaser.GameObjects.GameObject[] {
+    const cards: { icon: string; title: string; desc: string; accent: number }[] = [
+      { icon: '🧠', title: 'ADAPTIVE THREAT', desc: 'A-3 learns your habits and counters them.', accent: COLORS.magenta },
+      { icon: '🔌', title: 'HACK THE FACILITY', desc: 'Doors, cameras, lights — yours to control.', accent: COLORS.cyan },
+      { icon: '🌊', title: 'THREE ENDINGS', desc: 'Escape, destroy it, or set A-3 free.', accent: COLORS.green },
+    ];
+    const cardW = 280;
+    const cardH = 108;
+    const gap = 22;
+    const totalW = cardW * cards.length + gap * (cards.length - 1);
+    const startX = cx - totalW / 2;
+    const created: Phaser.GameObjects.GameObject[] = [];
+
+    cards.forEach((card, i) => {
+      const x = startX + i * (cardW + gap);
+      const y = topY;
+      const panel = this.add.graphics();
+      drawPanel(panel, x, y, cardW, cardH, card.accent);
+      const icon = uiText(this, x + cardW / 2, y + 22, card.icon, 24).setOrigin(0.5);
+      const title = uiText(this, x + cardW / 2, y + 52, card.title, 12, toHex(card.accent), true).setOrigin(0.5);
+      const desc = uiText(this, x + cardW / 2, y + 74, card.desc, 10, '#8fa8b3').setOrigin(0.5).setWordWrapWidth(cardW - 30).setAlign('center');
+      created.push(panel, icon, title, desc);
+
+      // Slow idle float, staggered per card so the strip doesn't breathe as one flat block.
+      const group = [panel, icon, title, desc];
+      this.tweens.add({ targets: group, y: '+=5', duration: 2400 + i * 260, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: i * 220 });
+    });
+    return created;
+  }
+
+  /** Soft drifting depth-of-field circles behind everything else — cheap "premium landing page" atmosphere. */
+  private buildBokeh(): void {
+    const count = 16;
+    const colors = [COLORS.cyan, COLORS.magenta, COLORS.blue];
+    for (let i = 0; i < count; i++) {
+      const baseX = Math.random() * GAME_WIDTH;
+      const baseY = Math.random() * GAME_HEIGHT;
+      const scale = 0.22 + Math.random() * 0.6;
+      const baseAlpha = 0.05 + Math.random() * 0.06;
+      const color = colors[i % colors.length];
+      const img = this.add.image(baseX, baseY, TEXTURES.glow).setScale(scale).setTint(color).setAlpha(baseAlpha).setBlendMode(Phaser.BlendModes.ADD);
+      const driftX = (Math.random() - 0.5) * 70;
+      const driftY = (Math.random() - 0.5) * 70;
+      const moveDuration = 9000 + Math.random() * 9000;
+      this.tweens.add({ targets: img, x: baseX + driftX, y: baseY + driftY, duration: moveDuration, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({
+        targets: img,
+        alpha: baseAlpha * 1.8,
+        duration: 3000 + Math.random() * 3000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 2000,
+      });
+    }
+  }
+
+  /** Staggered "landing page reveal": the group slides up 22px while fading in, so sections arrive in sequence instead of popping in at once. */
+  private revealGroup(container: Phaser.GameObjects.Container, delay: number, slide = 22): void {
+    const originalY = container.y;
+    container.setAlpha(0);
+    container.y = originalY + slide;
+    this.tweens.add({ targets: container, y: originalY, alpha: 1, duration: 560, delay, ease: 'Cubic.easeOut' });
+  }
+
+  /** Top bar: who's logged in, plus quick links to the personal log and diver customization. Returns everything it created. */
+  private buildProfileBar(): Phaser.GameObjects.GameObject[] {
+    const profile = getCurrentProfile();
+    const margin = 20;
+    const created: Phaser.GameObjects.GameObject[] = [];
+
+    if (profile) {
+      const badgeW = 250;
+      const badge = this.add.graphics();
+      drawPanel(badge, margin, margin, badgeW, 44, profile.avatarColor);
+      const dot = this.add.circle(margin + 24, margin + 22, 10, profile.avatarColor);
+      const name = uiText(this, margin + 44, margin + 10, profile.displayName.toUpperCase(), 13, '#e8f6ff', true).setWordWrapWidth(160);
+      const sub = uiText(
+        this,
+        margin + 44,
+        margin + 27,
+        profile.provider === 'local' && profile.username === 'guest' ? 'GUEST SESSION' : `@${profile.username}`,
+        10,
+        '#6f97a8',
+      );
+
+      const logoutBtn = this.makeButton(margin + badgeW + 46, margin + 22, 88, 30, 'LOG OUT', COLORS.red, false, () => this.doLogOut());
+      logoutBtn.box.setScale(0.86);
+      logoutBtn.label.setFontSize(10);
+      created.push(badge, dot, name, sub, logoutBtn.box, logoutBtn.label);
+    }
+
+    const rightX = GAME_WIDTH - margin;
+    const logBtn = this.makeButton(rightX - 96, margin + 22, 180, 44, '📊 PERSONAL LOG', COLORS.cyan, false, () => this.goTo(SCENES.personalLog));
+    logBtn.label.setFontSize(11);
+    const customizeBtn = this.makeButton(rightX - 96 - 194, margin + 22, 180, 44, '🎨 CUSTOMIZE DIVER', COLORS.green, false, () => this.goTo(SCENES.customize));
+    customizeBtn.label.setFontSize(11);
+    created.push(logBtn.box, logBtn.label, customizeBtn.box, customizeBtn.label);
+    return created;
+  }
+
+  private doLogOut(): void {
+    void logOut().then(() => this.scene.start(SCENES.auth));
+  }
+
+  private goTo(sceneKey: string): void {
+    if (this.starting) return;
+    this.starting = true;
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(sceneKey));
   }
 
   private pulseButton(btn: Button): void {
@@ -388,7 +524,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.cameras.main.fadeOut(650, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       startNewRun();
-      this.scene.start(SCENES.opening);
+      this.scene.start(SCENES.game);
     });
   }
 }

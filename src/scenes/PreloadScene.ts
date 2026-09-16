@@ -10,6 +10,6 @@ export class PreloadScene extends Phaser.Scene {
 
   create(): void {
     generateTextures(this);
-    this.scene.start(SCENES.menu);
+    this.scene.start(SCENES.auth);
   }
 }

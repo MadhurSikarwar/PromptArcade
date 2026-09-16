@@ -2,9 +2,10 @@ import Phaser from 'phaser';
 import type { DroneWorld } from '../ai/DroneAI';
 import { Drone } from '../entities/Drone';
 import type { DroneRoute } from '../map/MapData';
-import { TILE_SIZE } from '../utils/Constants';
+import { COLORS, DEPTH, TILE_SIZE } from '../utils/Constants';
 import type { AlertSystem } from './AlertSystem';
 import { audio } from './AudioManager';
+import { getDifficultyTuning } from './Difficulty';
 import type { GameState } from './GameState';
 import type { ThreatSystem } from './ThreatSystem';
 
@@ -15,11 +16,23 @@ export interface DroneDeps {
   player: () => { x: number; y: number };
 }
 
-const W = (t: { x: number; y: number }): { x: number; y: number } => ({ x: t.x * TILE_SIZE + TILE_SIZE / 2, y: t.y * TILE_SIZE + TILE_SIZE / 2 });
+interface Tracer {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  until: number;
+}
 
-/** Owns every patrol drone: simple secondary threat that feeds the alert system and A-3, never attacks directly. */
+const W = (t: { x: number; y: number }): { x: number; y: number } => ({ x: t.x * TILE_SIZE + TILE_SIZE / 2, y: t.y * TILE_SIZE + TILE_SIZE / 2 });
+const TRACER_MS = 140;
+const BASE_FIRE_DAMAGE = 5;
+
+/** Owns every patrol drone: a secondary threat that flags the player to A-3 and, once alerted, fires light-damage shots. */
 export class DroneSystem {
   private readonly drones: Drone[] = [];
+  private readonly tracers: Tracer[] = [];
+  private readonly tracerGfx: Phaser.GameObjects.Graphics;
 
   constructor(
     scene: Phaser.Scene,
@@ -27,10 +40,13 @@ export class DroneSystem {
     routes: readonly DroneRoute[],
     private readonly deps: DroneDeps,
   ) {
+    this.tracerGfx = scene.add.graphics().setDepth(DEPTH.aboveDark).setBlendMode(Phaser.BlendModes.ADD);
+
     const world: DroneWorld = {
       los: (a, b, c, d) => deps.los(a, b, c, d),
       playerHidden: () => this.state.player.hidden || !this.state.player.alive,
       onSpotted: (px, py, now) => this.onSpotted(px, py, now),
+      onFire: (fromX, fromY, toX, toY, now) => this.onFire(fromX, fromY, toX, toY, now),
     };
 
     for (const route of routes) {
@@ -56,6 +72,15 @@ export class DroneSystem {
     this.deps.threat.droneSighting(px, py, now);
   }
 
+  private onFire(fromX: number, fromY: number, toX: number, toY: number, now: number): void {
+    if (!this.state.player.alive) return;
+    audio.play('zap', 0.8);
+    const damage = Math.round(BASE_FIRE_DAMAGE * getDifficultyTuning().damageMult);
+    this.state.damagePlayer(damage, 'DRONE FIRE', now);
+    this.state.events.emit('screen-fx', { kind: 'red', duration: 180 });
+    this.tracers.push({ fromX, fromY, toX, toY, until: now + TRACER_MS });
+  }
+
   /** EMP and hacking both disable every drone in range — same pattern as cameras/hazards. */
   disableNear(x: number, y: number, radius: number, now: number, ms: number): number {
     let count = 0;
@@ -75,9 +100,28 @@ export class DroneSystem {
   update(dt: number, now: number): void {
     const p = this.deps.player();
     for (const drone of this.drones) drone.update(dt, now, p.x, p.y);
+    this.renderTracers(now);
+  }
+
+  private renderTracers(now: number): void {
+    const g = this.tracerGfx;
+    g.clear();
+    for (let i = this.tracers.length - 1; i >= 0; i--) {
+      const tracer = this.tracers[i];
+      if (now >= tracer.until) {
+        this.tracers.splice(i, 1);
+        continue;
+      }
+      const alpha = (tracer.until - now) / TRACER_MS;
+      g.lineStyle(2.4, COLORS.red, alpha * 0.9);
+      g.lineBetween(tracer.fromX, tracer.fromY, tracer.toX, tracer.toY);
+      g.lineStyle(1, 0xffffff, alpha * 0.7);
+      g.lineBetween(tracer.fromX, tracer.fromY, tracer.toX, tracer.toY);
+    }
   }
 
   destroy(): void {
+    this.tracerGfx.destroy();
     for (const drone of this.drones) drone.destroy();
   }
 }

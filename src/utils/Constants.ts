@@ -10,8 +10,10 @@ export const FONT_MONO = '"Share Tech Mono", Consolas, "Lucida Console", "Courie
 export const SCENES = {
   boot: 'BootScene',
   preload: 'PreloadScene',
+  auth: 'AuthScene',
   menu: 'MainMenuScene',
-  opening: 'OpeningScene',
+  personalLog: 'PersonalLogScene',
+  customize: 'CustomizeScene',
   game: 'GameScene',
   ui: 'UIScene',
   gameOver: 'GameOverScene',

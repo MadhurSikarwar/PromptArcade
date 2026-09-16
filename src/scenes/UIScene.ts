@@ -16,6 +16,7 @@ import { ObjectiveUI } from '../ui/ObjectiveUI';
 import { PauseMenu } from '../ui/PauseMenu';
 import { RadarUI } from '../ui/RadarUI';
 import { ThreatIndicator } from '../ui/ThreatIndicator';
+import { isTouchDevice, TouchControls } from '../ui/TouchControls';
 import { WalkthroughUI } from '../ui/WalkthroughUI';
 import { uiText } from '../ui/UIKit';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, SCENES, TEXTURES } from '../utils/Constants';
@@ -36,6 +37,7 @@ export class UIScene extends Phaser.Scene {
   private walkthrough!: WalkthroughUI;
   private compass!: CompassUI;
   private minimap!: MinimapUI;
+  private touchControls: TouchControls | null = null;
 
   constructor() {
     super(SCENES.ui);
@@ -73,7 +75,11 @@ export class UIScene extends Phaser.Scene {
     const feed = new MessageFeed(this);
     this.hud = new HUD(this, state);
     this.debugOverlay = new DebugOverlay(this, state);
-    this.pauseMenu = new PauseMenu(this);
+    this.pauseMenu = new PauseMenu(
+      this,
+      () => this.restartRun(),
+      () => this.quitToMenu(),
+    );
     this.cyberdeck = new CyberdeckUI(
       this,
       state,
@@ -123,12 +129,20 @@ export class UIScene extends Phaser.Scene {
       state.events.on('screen-fx', ({ kind, duration }) => this.threatIndicator.fx(kind, duration)),
       state.events.on('hold-progress', ({ label, progress }) => this.threatIndicator.setHold(label, progress)),
     ];
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => unsubscribe.forEach((off) => off()));
+    if (isTouchDevice()) this.touchControls = new TouchControls(this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      unsubscribe.forEach((off) => off());
+      this.touchControls?.destroy();
+      this.touchControls = null;
+    });
 
     const keyboard = requireKeyboard(this);
     keyboard.on('keydown-ESC', () => this.togglePause());
     keyboard.on('keydown-R', () => {
       if (this.pauseMenu.isOpen) this.restartRun();
+    });
+    keyboard.on('keydown-B', () => {
+      if (this.pauseMenu.isOpen) this.quitToMenu();
     });
     keyboard.on('keydown-H', () => this.walkthrough.toggle());
     keyboard.on('keydown-M', () => this.minimap.toggle());
@@ -172,5 +186,16 @@ export class UIScene extends Phaser.Scene {
     startNewRun();
     this.scene.stop(SCENES.game);
     this.scene.start(SCENES.game);
+  }
+
+  /** Bails out of the current run entirely and returns to the main menu — the pause menu had no way to do this before. */
+  private quitToMenu(): void {
+    this.pauseMenu.hide();
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.stop(SCENES.game);
+      this.scene.stop(SCENES.ui);
+      this.scene.start(SCENES.menu);
+    });
   }
 }

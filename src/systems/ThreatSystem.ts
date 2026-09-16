@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MISSIONS } from '../data/missions';
 import type { OctoState, OctopusWorld } from '../ai/OctopusStateMachine';
 import type { Pathfinder } from '../ai/Pathfinder';
 import type { ElectricHazard } from '../entities/Hazard';
@@ -79,6 +80,19 @@ export class ThreatSystem {
     return true;
   }
 
+  /**
+   * A-3 grows and hits harder as the run progresses — mission progress drives the curve, the
+   * active DifficultyTuning stretches or compresses it. Purely deterministic, no randomness.
+   */
+  private growthFactor(): { scale: number; damageMult: number } {
+    const diff = getDifficultyTuning();
+    const missionProgress = Phaser.Math.Clamp(this.state.missionIndex / Math.max(1, MISSIONS.length - 1), 0, 1);
+    const finalBoost = this.state.finalChase ? 0.15 : 0;
+    const scale = 1 + (missionProgress * 0.4 + finalBoost) * diff.growthMult;
+    const damageMult = (1 + missionProgress * 0.55 + finalBoost) * diff.damageMult;
+    return { scale, damageMult };
+  }
+
   private buildWorld(): OctopusWorld {
     return {
       pathfinder: this.deps.pathfinder,
@@ -96,7 +110,8 @@ export class ThreatSystem {
       onAttack: (damage, fromX, fromY) => {
         audio.play('impact');
         audio.play('roar', 0.7);
-        this.state.damagePlayer(damage, 'TAKEN BY A-3', this.scene.time.now);
+        const scaled = Math.round(damage * this.growthFactor().damageMult);
+        this.state.damagePlayer(scaled, 'TAKEN BY A-3', this.scene.time.now);
         this.state.events.emit('screen-fx', { kind: 'red', duration: 400 });
         this.deps.onPlayerHit(fromX, fromY);
       },
@@ -212,6 +227,7 @@ export class ThreatSystem {
     brain.stunDuration = (this.deps.adaptive.has('emp') ? 3200 : 5000) * diff.stunDurationMult;
     brain.speedMult = diff.speedMult;
     brain.awarenessMult = diff.awarenessMult;
+    brain.growthScale = this.growthFactor().scale;
     // Slow and manageable in Mission 1, ramping up as later missions (now 4 total) raise the stakes.
     brain.speedBonus = this.state.missionIndex * 19 - 18 + (this.state.facility.alert >= 50 ? 14 : 0);
 

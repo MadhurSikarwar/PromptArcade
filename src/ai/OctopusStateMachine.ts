@@ -52,6 +52,8 @@ export class OctopusBrain {
   /** Difficulty knobs — set every frame by ThreatSystem from the active DifficultyTuning. */
   speedMult = 1;
   awarenessMult = 1;
+  /** Grows with mission progress and difficulty — read by Octopus.ts to scale the visual body/tentacles. */
+  growthScale = 1;
   lastKnown = { x: 0, y: 0 };
 
   private path: TilePoint[] = [];

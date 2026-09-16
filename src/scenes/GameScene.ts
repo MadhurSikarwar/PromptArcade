@@ -8,11 +8,11 @@ import { ANCHORS, CAMERAS, DOORS, DRONE_ROUTES, FLOODS, HAZARDS, PLAYER_SPAWN_TI
 import { AdaptiveAISystem } from '../systems/AdaptiveAISystem';
 import { AlertSystem } from '../systems/AlertSystem';
 import { audio } from '../systems/AudioManager';
-import { getDifficultyTuning } from '../systems/Difficulty';
+import { getDifficulty, getDifficultyTuning } from '../systems/Difficulty';
 import { DoorSystem } from '../systems/DoorSystem';
 import { DroneSystem } from '../systems/DroneSystem';
 import { FloodSystem } from '../systems/FloodSystem';
-import { getGameState, type DeckAction, type GameState } from '../systems/GameState';
+import { getGameState, type DeckAction, type EndingKind, type GameState } from '../systems/GameState';
 import { HackingSystem } from '../systems/HackingSystem';
 import { InteractionSystem } from '../systems/InteractionSystem';
 import { LightingSystem } from '../systems/LightingSystem';
@@ -20,9 +20,14 @@ import { NoiseSystem } from '../systems/NoiseSystem';
 import { ObjectiveSystem } from '../systems/ObjectiveSystem';
 import { PowerSystem } from '../systems/PowerSystem';
 import { ThreatSystem } from '../systems/ThreatSystem';
+import { getCurrentProfile } from '../profile/Session';
+import { DEFAULT_LOADOUT, loadLoadout, recordRun } from '../profile/ProfileStore';
+import type { RunOutcome } from '../profile/Scoring';
+import { MISSIONS } from '../data/missions';
 import { InteractionPrompt } from '../ui/InteractionPrompt';
 import { CAMERA_LERP, CAMERA_ZOOM, COLORS, DEPTH, EMP_COOLDOWN_MS, EMP_STUN_RADIUS, FLOOD_OXYGEN_DRAIN_PER_SEC, FLOOD_TIMER_MS, SCENES, TILE_SIZE } from '../utils/Constants';
 import { DebugController } from '../utils/Debug';
+import { ensurePlayerTexture } from '../utils/TextureFactory';
 import { requireKeyboard } from '../utils/Helpers';
 
 export class GameScene extends Phaser.Scene {
@@ -68,7 +73,10 @@ export class GameScene extends Phaser.Scene {
     const freshRun = !this.state.hasSpawned;
     const spawn = freshRun ? this.map.tileCenter(PLAYER_SPAWN_TILE.x, PLAYER_SPAWN_TILE.y) : { x: this.state.player.x, y: this.state.player.y };
     this.state.hasSpawned = true;
-    this.player = new Player(this, spawn.x, spawn.y, this.state);
+    const profile = getCurrentProfile();
+    const loadout = profile ? loadLoadout(profile.id) : DEFAULT_LOADOUT;
+    const playerTexture = ensurePlayerTexture(this, loadout.suitColor, loadout.accentColor);
+    this.player = new Player(this, spawn.x, spawn.y, this.state, playerTexture, loadout.accentColor);
     this.physics.add.collider(this.player.sprite, this.map.collisionLayer);
 
     this.doors = new DoorSystem(this, this.state, DOORS, () => this.player.body);
@@ -193,6 +201,7 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch(SCENES.ui);
     this.updateRoom();
     if (freshRun) {
+      this.state.runStartedAt = this.time.now;
       this.state.setObjective('FIND A WAY OUT.');
       this.state.floodTriggerAt = this.time.now + FLOOD_TIMER_MS;
       const octoStart = this.map.tileCenter(ANCHORS.hubCenter.x, ANCHORS.hubCenter.y);
@@ -389,6 +398,7 @@ export class GameScene extends Phaser.Scene {
   private onPlayerDied(cause: string): void {
     if (this.ending) return;
     this.ending = true;
+    this.logRun('died', undefined, cause);
     this.player.setFrozen(true);
     this.interaction.setEnabled(false);
     const cam = this.cameras.main;
@@ -407,14 +417,32 @@ export class GameScene extends Phaser.Scene {
     if (this.ending) return;
     this.ending = true;
     this.state.destructAt = 0;
+    const kind = this.state.getEndingKind();
+    this.logRun('escaped', kind);
     this.player.setFrozen(true);
     this.interaction.setEnabled(false);
-    const kind = this.state.getEndingKind();
     const cam = this.cameras.main;
     cam.fadeOut(1400, 0, 12, 20);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.stop(SCENES.ui);
       this.scene.start(SCENES.ending, { kind });
+    });
+  }
+
+  /** Logs this run to the current profile's personal log — every run counts, win or lose. */
+  private logRun(outcome: RunOutcome, endingKind: EndingKind | undefined, cause?: string): void {
+    const profile = getCurrentProfile();
+    if (!profile) return;
+    const elapsedMs = this.state.runStartedAt > 0 ? this.time.now - this.state.runStartedAt : 0;
+    recordRun(profile.id, {
+      outcome,
+      endingKind,
+      cause,
+      difficulty: getDifficulty(),
+      missionsCompleted: this.state.missionIndex,
+      totalMissions: MISSIONS.length,
+      elapsedMs,
+      timestamp: Date.now(),
     });
   }
 }
